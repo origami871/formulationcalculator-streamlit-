@@ -1,0 +1,9 @@
+country,ingredient,rule,limit,applies_to,note,source,confidence
+Singapore (ASEAN),mit,prohibited,,Leave-on,"Methylisothiazolinone is prohibited in leave-on products under the ASEAN Cosmetic Directive (Annex VI, ref. 57).",https://www.fda.gov.ph/?p=3622,sourced
+Singapore (ASEAN),mit,max_pct,0.0015,Rinse-off,"Rinse-off use is capped at 0.0015% (15 ppm). The 27th ASEAN Cosmetic Scientific Body meeting agreed this cut from 0.01%.",https://cosmetic.chemlinked.com/news/cosmetic-news/asean-cosmetics-directory-further-aligns-eu-regulations,confirm
+European Union,mit,prohibited,,Leave-on,"Methylisothiazolinone is prohibited in leave-on products (Regulation (EU) 2016/1198, applied from 12 February 2017).",https://eur-lex.europa.eu/eli/reg/2016/1198/oj,sourced
+European Union,mit,max_pct,0.0015,Rinse-off,"Rinse-off use is capped at 0.0015% (15 ppm) (Regulation (EU) 2017/1224, applied from 27 April 2018).",https://eur-lex.europa.eu/eli/reg/2017/1224/oj,sourced
+European Union,naoh,max_ph,11,Both,"Sodium hydroxide used as a pH adjuster is restricted in Annex III: the finished product pH must be below 11 (products other than nail cuticle solvents, hair straighteners and depilatories).",https://echa.europa.eu/hr/cosmetics-restricted-substances/-/legislationlist/details/EU-COSM_PROD-ANX_III_RESTRIC-100.013.805-VSK-59840D,sourced
+United Kingdom,mit,prohibited,,Leave-on,"Methylisothiazolinone is prohibited in leave-on products (retained Regulation (EU) 2016/1198).",https://www.legislation.gov.uk/eur/2016/1198/data.htm,sourced
+United Kingdom,mit,max_pct,0.0015,Rinse-off,"Rinse-off use is capped at 0.0015% (15 ppm) (retained Regulation (EU) 2017/1224).",https://legislation.gov.uk/eur/2017/1224/introduction,sourced
+United Kingdom,naoh,max_ph,11,Both,"Sodium hydroxide used as a pH adjuster: the finished product pH must be below 11 (retained Regulation (EU) 2016/622).",https://www.legislation.gov.uk/eur/2016/622/annex/data.htm,confirm
