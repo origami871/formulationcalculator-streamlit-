@@ -17,11 +17,23 @@ Shared code is in core.py. Data lives in CSV files you can open in Excel:
   obligations.csv  what to do before selling in each country
 Colours and fonts live in .streamlit/config.toml and TOKENS in core.py.
 """
+from pathlib import Path
+
 import streamlit as st
 
-from core import COUNTRIES, EXAMPLES, inject_css, persistent_keys, sel_key, suggest
-
 st.set_page_config(page_title="Formulator Builder", page_icon="🧴", layout="wide")
+
+# Every file the app needs. If one did not get uploaded, say which, instead of crashing.
+HERE = Path(__file__).parent
+NEEDED = ["core.py", "ingredients.csv", "products.csv", "regulations.csv", "obligations.csv",
+          "views/formulation.py", "views/sensory.py", "views/ingredients.py", "views/trials.py"]
+missing = [f for f in NEEDED if not (HERE / f).is_file()]
+if missing:
+    st.error("These files are missing next to app.py. Upload them (keep the views folder as it is) and reload.")
+    st.code("\n".join(missing))
+    st.stop()
+
+from core import COUNTRIES, EXAMPLES, inject_css, persistent_keys, sel_key, suggest  # noqa: E402
 
 # Streamlit forgets a widget's value when its page is not on screen. Saving the value
 # again on every run keeps formulas A and B intact while you visit other pages.
@@ -42,9 +54,9 @@ if "seeded" not in st.session_state:
 inject_css()
 
 pages = [
-    st.Page("views/formulation.py", title="Formulation", default=True),
-    st.Page("views/sensory.py", title="Sensory"),
-    st.Page("views/ingredients.py", title="Ingredients"),
-    st.Page("views/trials.py", title="Trial log"),
+    st.Page(HERE / "views" / "formulation.py", title="Formulation", default=True),
+    st.Page(HERE / "views" / "sensory.py", title="Sensory"),
+    st.Page(HERE / "views" / "ingredients.py", title="Ingredients"),
+    st.Page(HERE / "views" / "trials.py", title="Trial log"),
 ]
 st.navigation(pages, position="top").run()
