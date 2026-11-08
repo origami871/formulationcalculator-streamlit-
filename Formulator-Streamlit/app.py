@@ -4,11 +4,11 @@ Formulator Builder — Streamlit version
 Run on your own computer:   streamlit run app.py
 
 This file is the front door: it sets up the page, keeps your formulas while you move
-between pages, and shows the menu. Each page is its own file in views/:
-  views/formulation.py  the main page: build formulas A and B, stability, compliance
-  views/sensory.py      predicted feel of A and B
-  views/ingredients.py  ingredient library and market products
-  views/trials.py       trial log and machine-learning prediction
+between pages, and shows the menu. Each page is its own file next to this one:
+  page_formulation.py  the main page: build formulas A and B, stability, compliance
+  page_sensory.py      predicted feel of A and B
+  page_ingredients.py  ingredient library and market products
+  page_trials.py       trial log and machine-learning prediction
 
 Shared code is in core.py. Data lives in CSV files you can open in Excel:
   ingredients.csv  one row per ingredient (add new rows here)
@@ -26,10 +26,10 @@ st.set_page_config(page_title="Formulator Builder", page_icon="🧴", layout="wi
 # Every file the app needs. If one did not get uploaded, say which, instead of crashing.
 HERE = Path(__file__).parent
 NEEDED = ["core.py", "ingredients.csv", "products.csv", "regulations.csv", "obligations.csv",
-          "views/formulation.py", "views/sensory.py", "views/ingredients.py", "views/trials.py"]
+          "page_formulation.py", "page_sensory.py", "page_ingredients.py", "page_trials.py"]
 missing = [f for f in NEEDED if not (HERE / f).is_file()]
 if missing:
-    st.error("These files are missing next to app.py. Upload them (keep the views folder as it is) and reload.")
+    st.error("These files are missing next to app.py. Upload them and reload.")
     st.code("\n".join(missing))
     st.stop()
 
@@ -54,9 +54,9 @@ if "seeded" not in st.session_state:
 inject_css()
 
 pages = [
-    st.Page(HERE / "views" / "formulation.py", title="Formulation", default=True),
-    st.Page(HERE / "views" / "sensory.py", title="Sensory"),
-    st.Page(HERE / "views" / "ingredients.py", title="Ingredients"),
-    st.Page(HERE / "views" / "trials.py", title="Trial log"),
+    st.Page(HERE / "page_formulation.py", title="Formulation", default=True),
+    st.Page(HERE / "page_sensory.py", title="Sensory"),
+    st.Page(HERE / "page_ingredients.py", title="Ingredients"),
+    st.Page(HERE / "page_trials.py", title="Trial log"),
 ]
 st.navigation(pages, position="top").run()
