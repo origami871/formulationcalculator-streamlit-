@@ -6,7 +6,9 @@ Shared code for every page of Formulator Builder.
   PART C  compliance: ingredient rules per country
   PART D  sensory theory
   PART E  drawing: bottle, sensory chart, tables, page style
+  PART F  suggestions: a free optimiser that searches for formulas
 """
+import random
 from html import escape
 from pathlib import Path
 
@@ -28,10 +30,11 @@ def _records(name):
 @st.cache_data
 def load_data():
     prods = pd.read_csv(HERE / "products.csv").set_index("code").to_dict("index")
-    return _records("ingredients.csv"), prods, _records("regulations.csv"), _records("obligations.csv")
+    return (_records("ingredients.csv"), prods, _records("regulations.csv"), _records("obligations.csv"),
+            _records("watchlist.csv"))
 
 
-INGREDIENTS, PRODUCTS, REGULATIONS, OBLIGATIONS = load_data()
+INGREDIENTS, PRODUCTS, REGULATIONS, OBLIGATIONS, WATCHLIST = load_data()
 ING = {i["id"]: i for i in INGREDIENTS}
 COUNTRIES = list(dict.fromkeys(r["country"] for r in OBLIGATIONS))
 
@@ -87,8 +90,8 @@ def sel_key(slot, ing_id):
 def persistent_keys():
     """Widget values that must survive a visit to another page (Streamlit drops widgets that are not on screen)."""
     marks = ("_sel_", "_pct_", "_name", "_ptype", "_ph")
-    return [k for k in st.session_state if k[:2] in ("A_", "B_") and any(m in k for m in marks)] + [
-        k for k in ("countries", "save_slot", "pick_ing") if k in st.session_state]
+    return [k for k in st.session_state if (k[:2] in ("A_", "B_") and any(m in k for m in marks)) or k.startswith("sg_")] + [
+        k for k in ("countries", "save_slot", "pick_ing", "guide_country") if k in st.session_state]
 
 
 def selected_ids(slot):
@@ -644,3 +647,181 @@ def inject_css():
 .fx-muted {{color:{t['muted']}}}
 button[kind="primary"], button[kind="primary"] p {{color:{t['on_primary']}}}
 </style>""", unsafe_allow_html=True)
+
+
+# ============================================================
+# PART F — SUGGESTIONS: A FREE OPTIMISER
+# No account and no cost: it tries thousands of combinations of the ingredients you allow,
+# scores each one with the same stability, compliance and sensory theory used elsewhere,
+# and keeps the best three. fitness = stability score - 5 x (average distance from the sensory goal).
+# A formula that breaks a chosen country's rule is thrown away, not just marked down.
+# ============================================================
+GOALS = {  # sensory goal on the 0-10 scale of the Sensory page
+    "Light, fast-absorbing lotion": {"body": 4, "spread": 8, "absorb": 8, "grease": 1, "tack": 2, "dry": 5, "film": 3},
+    "Silky, non-greasy lotion": {"body": 5, "spread": 7, "absorb": 7, "grease": 1, "tack": 1, "dry": 4, "film": 3},
+    "Rich, nourishing cream": {"body": 7, "spread": 4, "absorb": 4, "grease": 5, "tack": 3, "dry": 1, "film": 6},
+}
+
+
+def eligible(pool, ptype):
+    """Ingredients the optimiser can use. It needs sensory scores, cannot measure pH for NaOH,
+    drops the duplicate fatty alcohol, and never puts MIT in a leave-on product."""
+    pool = [i for i in pool if ING[i]["body"] is not None and ING[i]["cat"] != "pH adjuster"
+            and not (ptype == "Leave-on" and i == "mit")]
+    return [i for i in pool if not (i == "cetstear" and "cetearyl" in pool)]
+
+
+def has_core(pool):
+    """A suggestion needs an oil, a fatty alcohol and an emulsifier to make an emulsion."""
+    cats = {ING[i]["cat"] for i in pool}
+    return bool(cats & {"Emollient", "Butter"}) and "Fatty alcohol" in cats and "Emulsifier" in cats
+
+
+def optimise(pool, ptype, ph, countries, target, seed=0, tries=6000):
+    """Up to three distinct formulas, best first. Each is a dict with amounts, stability, dist, sense and items."""
+    rng = random.Random(seed)
+    pool = eligible(pool, ptype)
+    pick = lambda *cats: [i for i in pool if ING[i]["cat"] in cats]
+    oils, fatty, emuls = pick("Emollient", "Butter"), pick("Fatty alcohol"), pick("Emulsifier")
+    humect, extra, pres = pick("Humectant"), pick("Thickener / sensory"), pick("Preservative")
+    if not (oils and fatty and emuls):
+        return []
+    clamp = lambda n, lo, hi: max(lo, min(hi, n))
+
+    def amount(i, factor):
+        e = ING[i]
+        return e["typ"] if e["max"] < 0.01 else round(clamp(e["typ"] * factor, e["min"], e["max"]), 1)
+
+    def build(state):
+        """Add the emulsifiers: about r x oil phase in total, split by HLB when there are two."""
+        base, ems, r = state
+        a = dict(base)
+        oil = sum(p for i, p in base.items() if ING[i]["phase"] == "Oil")
+        known = [(ING[i]["rhlb"], p) for i, p in base.items() if ING[i]["rhlb"] is not None and ING[i]["phase"] == "Oil"]
+        r_hlb = sum(h * p for h, p in known) / sum(p for _, p in known) if known else 10
+        shares = {ems[0]: 1.0}
+        if len(ems) == 2:
+            e1, e2 = ING[ems[0]], ING[ems[1]]
+            x = clamp((r_hlb - e2["hlb"]) / (e1["hlb"] - e2["hlb"]), .3, .7) if e1["hlb"] != e2["hlb"] else .5
+            shares = {ems[0]: x, ems[1]: 1 - x}
+        for i, s in shares.items():
+            e = ING[i]
+            a[i] = round(clamp(s * r * oil, e["min"], e["max"]), 1)
+        return a
+
+    seen = {}
+
+    def evaluate(state):
+        a = build(state)
+        key = tuple(sorted(a.items()))
+        if key not in seen:
+            items = [{**ING["aqua"], "pct": 100 - sum(a.values())}] + [{**ING[i], "pct": p} for i, p in a.items()]
+            seen[key] = None
+            if items[0]["pct"] >= 40:
+                _, stability = analyse(items, ptype, ph)
+                if all(compliance(items, ptype, ph, c)[0] != "fail" for c in countries):
+                    sense = sensory(items)
+                    gaps = [abs(sense[k] - v) for k, v in target.items() if sense[k] is not None]
+                    dist = sum(gaps) / len(gaps)
+                    seen[key] = {"state": state, "amounts": a, "items": items, "sense": sense, "stability": stability,
+                                 "dist": dist, "fit": stability - 5 * dist, "ptype": ptype, "ph": ph}
+        return seen[key]
+
+    for _ in range(tries):
+        chosen = rng.sample(oils, rng.randint(1, min(3, len(oils)))) + [rng.choice(fatty)]
+        if humect and rng.random() < .85:
+            chosen.append(rng.choice(humect))
+        if extra and rng.random() < .4:
+            chosen.append(rng.choice(extra))
+        if pres and rng.random() < .5:
+            chosen.append(rng.choice(pres))
+        evaluate(({i: amount(i, rng.uniform(.6, 1.6)) for i in chosen},
+                  rng.sample(emuls, rng.randint(1, min(2, len(emuls)))), rng.uniform(.17, .30)))
+
+    # polish the best draws: nudge one amount (or the emulsifier ratio) at a time and keep what helps
+    for best in sorted((r for r in seen.values() if r), key=lambda r: -r["fit"])[:12]:
+        for _ in range(40):
+            base, ems, r = best["state"]
+            base = dict(base)
+            if rng.random() < .15:
+                r = clamp(r + rng.choice([-.02, .02]), .15, .35)
+            else:
+                i = rng.choice(list(base))
+                if ING[i]["max"] < 0.01:
+                    continue
+                step = rng.choice([-1, 1]) * max(.5, base[i] * .2)
+                base[i] = round(clamp(base[i] + step, ING[i]["min"], ING[i]["max"]), 1)
+            cand = evaluate((base, ems, r))
+            if cand and cand["fit"] > best["fit"]:
+                best = cand
+
+    ranked = sorted((r for r in seen.values() if r), key=lambda r: -r["fit"])
+    out, used = [], set()
+    for res in ranked:  # prefer three different ingredient sets over three tweaks of one
+        ids = frozenset(res["amounts"])
+        if ids not in used:
+            used.add(ids)
+            out.append(res)
+        if len(out) == 3:
+            break
+    return out + [r for r in ranked if r not in out][:3 - len(out)]
+
+
+def load_suggestion(result, slot, name):
+    """Put a suggested formula into formula A or B (runs as a button callback)."""
+    for i in INGREDIENTS:
+        st.session_state[sel_key(slot, i["id"])] = i["id"] in result["amounts"]
+    for i, p in result["amounts"].items():
+        st.session_state[pct_key(slot, i)] = p
+    st.session_state[f"{slot}_name"] = name
+    st.session_state[f"{slot}_ptype"] = result["ptype"]
+    st.session_state[f"{slot}_ph"] = result["ph"]
+    st.session_state["sg_loaded"] = slot
+
+# ============================================================
+# PART G — SMALL HELPERS SHARED BY THE PAGES
+# ============================================================
+def recipe_rows(items):
+    """Rows for table_html: each phase as a bold heading, then its ingredients largest first."""
+    rows = []
+    for phase, (label, letter) in PHASES.items():
+        members = [i for i in items if i["pct"] > 0 and phase_of(i) == phase]
+        if members:
+            rows.append([f"<b>{label} ({letter})</b>", ""])
+            rows += [[escape(i["short"]), f"{fmt(i['pct'])}%"] for i in sorted(members, key=lambda i: -i["pct"])]
+    return rows
+
+
+def rule_text(country, ing_id):
+    """What regulations.csv says about one ingredient in one country, in plain words, or None."""
+    parts = []
+    for r in REGULATIONS:
+        if r["country"] != country or r["ingredient"] != ing_id:
+            continue
+        where = {"Leave-on": "Leave-on", "Rinse-off": "Rinse-off", "Both": "All products"}[r["applies_to"]]
+        what = {"prohibited": "not allowed", "max_pct": f"up to {fmt(r['limit'])}%",
+                "max_ph": f"product pH below {fmt(r['limit'])}"}[r["rule"]]
+        parts.append(f"{where}: {what}")
+    return "; ".join(parts) or None
+
+
+def amount_changes(old, new):
+    """Plain-language list of what changed between two {ingredient id: %} dicts."""
+    out = []
+    for i, p in new.items():
+        if i not in old:
+            out.append(f"Added {ING[i]['short']} ({fmt(p)}%)")
+        elif abs(p - old[i]) >= 0.05:
+            out.append(f"{ING[i]['short']}: {fmt(old[i])}% → {fmt(p)}%")
+    out += [f"Removed {ING[i]['short']}" for i in old if i not in new]
+    return out
+
+
+def sense_changes(old, new):
+    """Sensory attributes that moved by at least 0.3 points between two predictions, largest move first."""
+    rows = []
+    for key, (label, _, _) in SENSES.items():
+        a, b = (old or {}).get(key), (new or {}).get(key)
+        if a is not None and b is not None and abs(b - a) >= 0.3:
+            rows.append((abs(b - a), f"{label}: {a:.1f} → {b:.1f} ({b - a:+.1f})".replace("-", "−").replace("−>", "->")))
+    return [text for _, text in sorted(rows, reverse=True)]
