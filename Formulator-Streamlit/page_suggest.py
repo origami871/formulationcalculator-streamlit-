@@ -90,5 +90,4 @@ rows = [[label, f"{target[k]:g}", *[("–" if r["sense"][k] is None else f"{r['s
         for k, (label, _, _) in SENSES.items()]
 st.markdown(table_html(head, rows), unsafe_allow_html=True)
 st.caption("These are theory-based starting points, not tested formulas. Load one into formula A or B to read its full "
-           "stability checks and compliance details, then make a real batch and test it. Leave-on options always show "
-           "“No preservative” because the ingredient list has no leave-on preservative yet.")
+           "stability checks and compliance details, then make a real batch and test it.")

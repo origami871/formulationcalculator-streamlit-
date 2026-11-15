@@ -1,0 +1,10 @@
+# secrets never go to GitHub: the Claude API key lives in Streamlit's Secrets settings instead
+.streamlit/secrets.toml
+.env
+
+# files your computer makes on its own
+__pycache__/
+*.pyc
+.claude/
+.DS_Store
+Thumbs.db

@@ -42,7 +42,7 @@ COUNTRIES = list(dict.fromkeys(r["country"] for r in OBLIGATIONS))
 CATEGORIES = {
     "Base": "#a9d3ee", "Humectant": "#9fd8c8", "Emollient": "#f2c46d", "Butter": "#e8a95b",
     "Fatty alcohol": "#e9dcc0", "Emulsifier": "#c9a3e0", "Thickener / sensory": "#d6c7ae",
-    "pH adjuster": "#c4c4c4", "Preservative": "#f29c9c",
+    "Antioxidant": "#f7d9a0", "pH adjuster": "#c4c4c4", "Preservative": "#f29c9c",
 }
 
 # design tokens for the parts Streamlit's theme cannot reach (SVG pictures, tags, tables)
@@ -272,6 +272,10 @@ def complete_formula(slot):
         added.append("mit")
     if ptype == "Leave-on" and "mit" in ids:
         removed.append("mit")
+    if ptype == "Leave-on" and "pheno" in ING and not [i for i in ids if ING[i]["cat"] == "Preservative" and i != "mit"]:
+        added.append("pheno")
+    if "toco" in ING and "Antioxidant" not in cats and any(ING[i]["unsaturated"] for i in ids + added):
+        added.append("toco")
     if "cetstear" in ids and "cetearyl" in ids:
         removed.append("cetstear")
     for i in added:
