@@ -5,7 +5,7 @@ Run on your own computer:   streamlit run app.py
 
 This file is the front door: it sets up the page, keeps your formulas while you move
 between pages, and shows the menu. Each page is its own file next to this one:
-  page_studio.py       the front page: the interactive bottle (the page itself is studio/index.html)
+  page_studio.py       the front page: the interactive bottle (the page itself is studio.html)
   page_formulation.py  build formulas A and B side by side, stability, compliance
   page_suggest.py      free optimiser: suggests formulas for a goal and your countries
   page_sensory.py      predicted feel of A and B
@@ -30,7 +30,7 @@ st.set_page_config(page_title="Formulator Builder", page_icon="🧴", layout="wi
 # Every file the app needs. If one did not get uploaded, say which, instead of crashing.
 HERE = Path(__file__).parent
 NEEDED = ["core.py", "ingredients.csv", "products.csv", "regulations.csv", "obligations.csv", "watchlist.csv",
-          "page_studio.py", "studio/index.html", "page_formulation.py", "page_suggest.py", "page_sensory.py", "page_ingredients.py", "page_regulations.py",
+          "page_studio.py", "studio.html", "page_formulation.py", "page_suggest.py", "page_sensory.py", "page_ingredients.py", "page_regulations.py",
           "page_trials.py"]
 missing = [f for f in NEEDED if not (HERE / f).is_file()]
 if missing:
