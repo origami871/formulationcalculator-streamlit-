@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Formulator Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* PP Editorial New + PP Neue Montreal: used when installed on the computer, or when the font
+   files sit in studio/fonts/. Until then the Google fallbacks above stand in. */
+@font-face{font-family:"PP Editorial New";font-weight:400;font-style:normal;font-display:swap;
+  src:local("PP Editorial New"),local("PPEditorialNew-Regular"),url("fonts/PPEditorialNew-Regular.woff2") format("woff2"),url("fonts/PPEditorialNew-Regular.otf") format("opentype")}
+@font-face{font-family:"PP Editorial New";font-weight:400;font-style:italic;font-display:swap;
+  src:local("PP Editorial New Italic"),local("PPEditorialNew-Italic"),url("fonts/PPEditorialNew-Italic.woff2") format("woff2"),url("fonts/PPEditorialNew-Italic.otf") format("opentype")}
+@font-face{font-family:"PP Neue Montreal";font-weight:400;font-style:normal;font-display:swap;
+  src:local("PP Neue Montreal Book"),local("PPNeueMontreal-Book"),local("PP Neue Montreal"),url("fonts/PPNeueMontreal-Book.woff2") format("woff2"),url("fonts/PPNeueMontreal-Book.otf") format("opentype")}
+@font-face{font-family:"PP Neue Montreal";font-weight:500;font-style:normal;font-display:swap;
+  src:local("PP Neue Montreal Medium"),local("PPNeueMontreal-Medium"),url("fonts/PPNeueMontreal-Medium.woff2") format("woff2"),url("fonts/PPNeueMontreal-Medium.otf") format("opentype")}
+/*__FONTS__*/
+
+:root{
+  --ink:#02070A; --blue:#0297DE; --orange:#FC734D; --paper:#EAF4FA;
+  --muted:rgba(234,244,250,.62); --faint:rgba(234,244,250,.38); --line:rgba(234,244,250,.14);
+  --panel:rgba(234,244,250,.045);
+  --serif:"PP Editorial New","Instrument Serif",Georgia,serif;
+  --sans:"PP Neue Montreal","Neue Montreal","Inter Tight",system-ui,sans-serif;
+  --mx:50%; --my:40%;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--ink);color:var(--paper);font-family:var(--sans);font-size:16px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(520px circle at var(--mx) var(--my),rgba(2,151,222,.16),transparent 70%),
+             radial-gradient(900px circle at 85% 110%,rgba(252,115,77,.07),transparent 70%)}
+a{color:inherit}
+button,input{font:inherit;color:inherit}
+h1,h2,h3{font-family:var(--serif);font-weight:400;margin:0;letter-spacing:-.01em;line-height:1}
+em{font-style:italic;color:var(--orange)}
+.eyebrow{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+.eyebrow b{color:var(--orange);font-weight:500}
+
+/* ---------- top bar ---------- */
+#bar{position:fixed;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;gap:20px;padding:14px 24px;
+  background:linear-gradient(var(--ink),rgba(2,7,10,0))}
+#bar .brand{font-family:var(--serif);font-size:22px;text-decoration:none}
+#bar nav{margin-left:auto;display:flex;gap:4px;align-items:center}
+#bar nav a{font-size:14px;text-decoration:none;color:var(--muted);padding:8px 12px;border-radius:999px;transition:color .2s,background .2s}
+#bar nav a:hover,#bar nav a.on{color:var(--paper);background:var(--panel)}
+#bar nav a.cta{color:var(--ink);background:var(--blue);font-weight:500}
+#bar nav a.cta:hover{background:#28b0f2}
+
+/* ---------- the bottle stage (fixed; moves with scroll) ---------- */
+#stagebg{display:none}
+#stage{position:fixed;inset:0;z-index:6;pointer-events:none;display:grid;place-items:center;perspective:1200px}
+#mover{will-change:transform}
+#tilt{position:relative;height:min(68vh,620px);aspect-ratio:300/560;transform-style:preserve-3d;will-change:transform}
+#bottle{width:100%;height:100%;display:block;overflow:visible;pointer-events:auto;
+  filter:drop-shadow(0 30px 60px rgba(2,151,222,.22))}
+#bottle .layer{cursor:grab;transition:filter .2s}
+#bottle .layer:hover{filter:brightness(1.15)}
+#glassline{transition:stroke .2s,stroke-width .2s}
+body.dragging.add #glassline{stroke:var(--blue);stroke-width:3;stroke-dasharray:7 7;animation:dash 1s linear infinite}
+body.dragging.add.over #glassline{stroke:var(--orange);stroke-dasharray:none}
+body.dragging.remove.out #glassline{stroke:var(--orange)}
+@keyframes dash{to{stroke-dashoffset:-14}}
+.phl{position:absolute;right:calc(76.7% + 16px);white-space:nowrap;text-align:right;font-size:12px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);transform:translateY(-50%);padding-right:14px}
+.phl b{display:block;font-family:var(--serif);font-size:26px;letter-spacing:0;text-transform:none;color:var(--paper);font-weight:400;line-height:1.1}
+.phl::after{content:"";position:absolute;right:0;top:50%;height:var(--h,20px);width:6px;transform:translateY(-50%);
+  border:1px solid var(--faint);border-right:0}
+.phl[data-z=cool] b{color:var(--orange)}
+
+/* ---------- hero ---------- */
+section{position:relative;z-index:1}
+#hero{height:100vh;min-height:560px;display:grid;grid-template-columns:1fr min(46vh,400px) 1fr;align-items:center;padding:0 4vw}
+#hero h1{font-size:clamp(46px,7.4vw,124px)}
+#hero .l{text-align:right}
+#hero .r{grid-column:3}
+#hero .sub{position:absolute;left:4vw;bottom:44px;max-width:300px;color:var(--muted);font-size:15px}
+#hero .cue{position:absolute;right:4vw;bottom:44px;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);display:flex;gap:10px;align-items:center}
+#hero .cue i{width:1px;height:44px;background:linear-gradient(var(--blue),transparent);animation:cue 1.8s ease-in-out infinite;transform-origin:top}
+@keyframes cue{0%{transform:scaleY(0)}60%{transform:scaleY(1)}100%{transform:scaleY(1);opacity:0}}
+
+/* ---------- content column ---------- */
+.col{margin-left:50vw;width:min(46vw,660px);padding-right:24px}
+.step{min-height:92vh;display:flex;flex-direction:column;justify-content:center;padding:8vh 0}
+.step h2,.block h2{font-size:clamp(40px,5vw,76px);margin:14px 0 18px}
+.step p,.block p.lead{color:var(--muted);max-width:46ch;margin:0 0 22px}
+.ilist{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.ilist li{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+.ilist .sw,.row .sw,.chip .sw{width:10px;height:10px;border-radius:50%;flex:none}
+.ilist .n{flex:1;min-width:0}
+.ilist .n small{display:block;color:var(--faint);font-size:13px}
+.ilist .p{font-variant-numeric:tabular-nums}
+.ilist .empty{color:var(--faint)}
+.dots{display:inline-flex;gap:3px;flex:none}
+.dots i{width:6px;height:6px;border-radius:50%;background:var(--line)}
+.dots i.on{background:var(--blue)}
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1)}
+.reveal.in{opacity:1;transform:none}
+
+.block{padding:14vh 0 8vh}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin:0 0 28px}
+.card{border:1px solid var(--line);border-radius:14px;padding:14px;background:var(--panel);text-decoration:none;display:block;
+  transition:border-color .2s,transform .2s,background .2s}
+.card:hover,.card:focus-visible{border-color:var(--blue);transform:translateY(-3px);background:rgba(2,151,222,.08);outline:0}
+.card .k{font-size:12px;color:var(--orange);letter-spacing:.14em}
+.card b{display:block;font-family:var(--serif);font-weight:400;font-size:21px;line-height:1.15;margin:6px 0 8px}
+.card small{color:var(--faint);font-size:13px}
+table.mx{width:100%;border-collapse:collapse;font-size:14px}
+table.mx th{font-weight:400;color:var(--faint);font-size:12px;letter-spacing:.1em;padding:6px 4px;text-align:center}
+table.mx td{padding:8px 4px;border-top:1px solid var(--line);text-align:center}
+table.mx td:first-child,table.mx th:first-child{text-align:left}
+table.mx tr.in td:first-child{color:var(--paper)}
+table.mx tr td:first-child{color:var(--faint)}
+table.mx tr.in td:first-child::before{content:"● ";color:var(--orange);font-size:9px;vertical-align:middle}
+table.mx i{display:inline-block;width:9px;height:9px;border-radius:50%;border:1px solid var(--line)}
+table.mx i.on{background:var(--blue);border-color:var(--blue)}
+table.mx td.hot,table.mx th.hot{background:rgba(2,151,222,.1)}
+.note{color:var(--faint);font-size:13px;margin-top:14px}
+
+/* ---------- studio ---------- */
+#studio{padding-bottom:16vh}
+.ctl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 22px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px}
+.seg button{border:0;background:none;padding:7px 14px;border-radius:999px;cursor:pointer;color:var(--muted);font-size:14px}
+.seg button[aria-pressed=true]{background:var(--paper);color:var(--ink)}
+.ph{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:14px;color:var(--muted)}
+.ph input{width:52px;background:none;border:0;color:var(--paper);text-align:right;font-variant-numeric:tabular-nums}
+.btn{border:1px solid var(--line);background:none;border-radius:999px;padding:9px 16px;cursor:pointer;font-size:14px;transition:border-color .2s,background .2s}
+.btn:hover{border-color:var(--paper)}
+.btn.pri{background:var(--blue);border-color:var(--blue);color:var(--ink);font-weight:500}
+.btn.pri:hover{background:#28b0f2}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+h3.sec{font-family:var(--sans);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);font-weight:400;
+  display:flex;justify-content:space-between;margin:30px 0 10px}
+h3.sec span{color:var(--paper);letter-spacing:0;font-variant-numeric:tabular-nums}
+.zone{border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:4px 16px;margin-bottom:10px}
+.zone>header{display:flex;justify-content:space-between;align-items:baseline;padding:12px 0 8px;font-family:var(--serif);font-size:24px}
+.zone>header span{font-family:var(--sans);font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+.zone[data-z=cool]>header{color:var(--orange)}
+.row{display:grid;grid-template-columns:10px minmax(0,1.1fr) minmax(90px,1fr) 86px 26px;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line);
+  transition:background .3s}
+.row.flash{background:rgba(2,151,222,.16)}
+.row .nm{min-width:0}
+.row .nm b{font-weight:500;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .nm small{color:var(--faint);font-size:12px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .num{display:flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:8px;padding:4px 8px;color:var(--faint)}
+.row .num input{width:100%;min-width:0;background:none;border:0;text-align:right;color:var(--paper);font-variant-numeric:tabular-nums;-moz-appearance:textfield}
+.row .num input::-webkit-outer-spin-button,.row .num input::-webkit-inner-spin-button{-webkit-appearance:none}
+.row.off .num{border-color:var(--orange)}
+.row .rm{border:0;background:none;color:var(--faint);cursor:pointer;font-size:20px;line-height:1;border-radius:6px;padding:2px}
+.row .rm:hover{color:var(--orange)}
+.row .qs{grid-column:3/6;color:var(--muted);font-size:14px;text-align:right;font-variant-numeric:tabular-nums}
+.row .qs b{color:var(--paper);font-weight:500;font-size:16px}
+.zone .none{color:var(--faint);font-size:14px;padding:10px 0 14px;border-top:1px solid var(--line)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:22px;background:none;cursor:pointer;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:3px;border-radius:2px;
+  background:linear-gradient(to right,var(--line) 0 var(--a),rgba(2,151,222,.6) var(--a) var(--b),var(--line) var(--b) 100%)}
+input[type=range]::-moz-range-track{height:3px;border-radius:2px;
+  background:linear-gradient(to right,var(--line) 0 var(--a),rgba(2,151,222,.6) var(--a) var(--b),var(--line) var(--b) 100%)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--paper);margin-top:-6.5px;
+  border:0;box-shadow:0 0 0 4px rgba(2,151,222,.25);transition:box-shadow .2s}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--paper);border:0;box-shadow:0 0 0 4px rgba(2,151,222,.25)}
+input[type=range]:hover::-webkit-slider-thumb,input[type=range]:active::-webkit-slider-thumb{box-shadow:0 0 0 7px rgba(2,151,222,.35)}
+
+.shelf{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:999px;padding:9px 14px 9px 12px;background:var(--panel);
+  cursor:grab;user-select:none;touch-action:none;font-size:14px;transition:border-color .2s,transform .2s,background .2s}
+.chip:hover{border-color:var(--blue);transform:translateY(-2px);background:rgba(2,151,222,.08)}
+.chip .dots{margin-left:2px}
+.chip.ghost{position:fixed;left:0;top:0;z-index:50;pointer-events:none;margin:0;background:var(--ink);border-color:var(--blue);
+  box-shadow:0 12px 40px rgba(2,151,222,.4);cursor:grabbing;transition:none}
+body.over .chip.ghost{border-color:var(--orange);box-shadow:0 12px 40px rgba(252,115,77,.5)}
+body.remove.out .chip.ghost{border-color:var(--orange);opacity:.7;text-decoration:line-through}
+body.dragging{cursor:grabbing;user-select:none}
+.hint{color:var(--faint);font-size:13px;margin:10px 0 0}
+
+.read{display:grid;grid-template-columns:150px 1fr;gap:22px;align-items:start}
+.ring{position:relative;width:150px;height:150px}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:5}
+.ring .t{stroke:var(--line)}
+.ring .v{stroke:var(--blue);stroke-linecap:round;transition:stroke-dashoffset .6s cubic-bezier(.2,.7,.2,1),stroke .3s}
+.ring div{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.ring div b{font-family:var(--serif);font-size:54px;font-weight:400;line-height:1}
+.ring div small{color:var(--muted);font-size:12px}
+.chk{list-style:none;margin:0;padding:0}
+.chk li{padding:9px 0 9px 20px;border-bottom:1px solid var(--line);position:relative;font-size:14px;color:var(--muted)}
+.chk li b{color:var(--paper);font-weight:500;display:block}
+.chk li::before{content:"";position:absolute;left:0;top:15px;width:8px;height:8px;border-radius:50%;background:var(--blue)}
+.chk li.high::before{background:var(--orange)}
+.chk li.warn::before{background:none;border:1.5px solid var(--orange)}
+.chk li.info::before{background:none;border:1.5px solid var(--faint)}
+details.ok summary{cursor:pointer;color:var(--faint);font-size:14px;padding:10px 0}
+.feel{display:grid;grid-template-columns:150px 1fr 34px;gap:8px 14px;align-items:center;font-size:14px}
+.feel span{color:var(--muted)}
+.feel .bar{height:3px;background:var(--line);border-radius:2px;overflow:hidden}
+.feel .bar i{display:block;height:100%;background:var(--blue);border-radius:2px;transition:width .5s cubic-bezier(.2,.7,.2,1)}
+.feel b{font-weight:400;text-align:right;font-variant-numeric:tabular-nums}
+
+#tip{position:fixed;z-index:60;pointer-events:none;background:rgba(2,7,10,.92);border:1px solid var(--line);border-radius:12px;padding:10px 14px;
+  max-width:260px;font-size:13px;color:var(--muted);opacity:0;transition:opacity .15s;backdrop-filter:blur(8px)}
+#tip.on{opacity:1}
+#tip b{display:block;color:var(--paper);font-family:var(--serif);font-size:20px;font-weight:400;line-height:1.15}
+#tip u{text-decoration:none;color:var(--orange)}
+#toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);z-index:70;background:var(--paper);color:var(--ink);padding:10px 18px;border-radius:999px;
+  font-size:14px;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* ---------- narrow screens: bottle docks at the top ---------- */
+@media (max-width:899px){
+  #bar nav a:not(.cta){display:none}
+  #hero{display:block;padding:92px 22px 0;text-align:left}
+  #hero .l{text-align:left}
+  #hero h1{display:inline;font-size:clamp(42px,12vw,72px)}
+  #hero .sub{left:22px;right:22px;bottom:22px;max-width:none;font-size:14px}
+  #hero .cue{display:none}
+  #stagebg{display:block;position:fixed;top:0;left:0;right:0;height:42vh;z-index:5;pointer-events:none;opacity:0;
+    background:linear-gradient(var(--ink) 82%,rgba(2,7,10,0))}
+  .phl{display:none}
+  .col{margin:0;width:auto;padding:0 18px}
+  .step{min-height:0;padding:46vh 0 4vh}
+  .block{padding:46vh 0 4vh}
+  .row{grid-template-columns:10px minmax(0,1fr) 86px 26px}
+  .row input[type=range]{grid-column:1/5;grid-row:2}
+  .row .qs{grid-column:3/5}
+  .read{grid-template-columns:1fr}
+  .feel{grid-template-columns:120px 1fr 34px}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .reveal{opacity:1;transform:none;transition:none}
+  #hero .cue i{animation:none}
+}
+</style>
+</head>
+<body>
+<div id="bar">
+  <a class="brand" href="#hero">Formulator <em>Studio</em></a>
+  <nav>
+    <a href="#phases">Phases</a>
+    <a href="#bench">Benchmarks</a>
+    <a class="cta" href="#studio">Open the studio</a>
+  </nav>
+</div>
+
+<div id="stagebg"></div>
+<div id="stage" aria-hidden="false">
+  <div id="mover"><div id="tilt">
+    <svg id="bottle" viewBox="0 0 300 560" role="img" aria-label="Bottle showing the formulation: oil phase on top, water phase in the middle, cool-down additions at the bottom">
+      <defs>
+        <clipPath id="clip"><path d="M70,150 Q70,128 96,124 L204,124 Q230,128 230,150 L230,500 Q230,530 200,530 L100,530 Q70,530 70,500 Z"/></clipPath>
+        <linearGradient id="steel" x1="0" x2="1"><stop offset="0" stop-color="#0d1c26"/><stop offset=".45" stop-color="#2b4658"/><stop offset="1" stop-color="#0a151c"/></linearGradient>
+        <linearGradient id="shine" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+      </defs>
+      <rect x="62" y="34" width="62" height="10" rx="5" fill="url(#steel)"/>
+      <rect x="114" y="28" width="72" height="24" rx="9" fill="url(#steel)"/>
+      <rect x="143" y="50" width="14" height="38" fill="#1b2f3c"/>
+      <rect x="110" y="84" width="80" height="18" rx="5" fill="url(#steel)"/>
+      <rect x="120" y="100" width="60" height="26" fill="#12232e"/>
+      <path d="M70,150 Q70,128 96,124 L204,124 Q230,128 230,150 L230,500 Q230,530 200,530 L100,530 Q70,530 70,500 Z" fill="rgba(234,244,250,.05)"/>
+      <g clip-path="url(#clip)">
+        <g id="layers"></g>
+        <g id="seams"></g>
+        <g id="bubbles"></g>
+        <path id="air" fill="#07131b"/>
+        <rect id="shineL" x="80" y="124" width="16" height="406" fill="url(#shine)" opacity=".7"/>
+        <rect x="212" y="124" width="6" height="406" fill="#fff" opacity=".07"/>
+      </g>
+      <path id="glassline" d="M70,150 Q70,128 96,124 L204,124 Q230,128 230,150 L230,500 Q230,530 200,530 L100,530 Q70,530 70,500 Z" fill="none" stroke="rgba(234,244,250,.42)" stroke-width="1.5"/>
+    </svg>
+    <div class="phl" data-z="oil">Oil phase<b></b></div>
+    <div class="phl" data-z="water">Water phase<b></b></div>
+    <div class="phl" data-z="cool">Cool-down<b></b></div>
+  </div></div>
+</div>
+
+<section id="hero">
+  <h1 class="l">Every<br>formula,</h1>
+  <h1 class="r"><em>layer<br>by layer.</em></h1>
+  <p class="sub">A starting formulation read from your benchmark products, poured into one bottle. Move your cursor. Then scroll.</p>
+  <div class="cue"><i></i>Scroll</div>
+</section>
+
+<div class="col">
+  <section class="step" id="phases" data-zone="oil">
+    <div class="reveal">
+      <div class="eyebrow"><b>01</b> &nbsp;Top of the bottle</div>
+      <h2>The <em>oil</em> phase</h2>
+      <p>Emollients, butters, fatty alcohols and emulsifiers. Heated together, then poured into the water phase. Oil floats, so it sits on top.</p>
+      <ul class="ilist" data-list="oil"></ul>
+    </div>
+  </section>
+  <section class="step" data-zone="water">
+    <div class="reveal">
+      <div class="eyebrow"><b>02</b> &nbsp;The body</div>
+      <h2>The <em>water</em> phase</h2>
+      <p>Water fills whatever the other ingredients leave, up to 100%. Humectants and water-soluble thickeners dissolve here.</p>
+      <ul class="ilist" data-list="water"></ul>
+    </div>
+  </section>
+  <section class="step" data-zone="cool">
+    <div class="reveal">
+      <div class="eyebrow"><b>03</b> &nbsp;Bottom of the bottle</div>
+      <h2>Added <em>cool</em></h2>
+      <p>Preservatives, pH adjusters and anything heat-sensitive go in last, once the batch has cooled. Small amounts, large consequences.</p>
+      <ul class="ilist" data-list="cool"></ul>
+    </div>
+  </section>
+
+  <section class="block" id="bench">
+    <div class="reveal">
+      <div class="eyebrow"><b>04</b> &nbsp;Where the start comes from</div>
+      <h2>Read from <em id="nprod">five</em> benchmarks</h2>
+      <p class="lead">The starting formula keeps every ingredient found in more than half of your benchmark products, then tops up the oil phase with the next most common oils. Hover a product to see what it shares with the bottle.</p>
+      <div class="cards" id="cards"></div>
+      <table class="mx" id="matrix"></table>
+      <p class="note">● in the bottle now. Benchmarks list ingredients, not amounts, so levels start at each ingredient's typical use level and the emulsifier is set to about 22% of the oil phase.</p>
+    </div>
+  </section>
+
+  <section class="block" id="studio">
+    <div class="reveal">
+      <div class="eyebrow"><b>05</b> &nbsp;Studio</div>
+      <h2>Make it <em>yours</em></h2>
+      <p class="lead">Drag an ingredient onto the bottle. Pull a layer out to remove it. Slide to change an amount. The bottle pours as you go.</p>
+      <div class="ctl">
+        <div class="seg" role="group" aria-label="Product type">
+          <button type="button" data-pt="Leave-on">Leave-on</button><button type="button" data-pt="Rinse-off">Rinse-off</button>
+        </div>
+        <label class="ph">Target pH <input id="ph" type="number" min="3" max="9" step="0.1"></label>
+        <button class="btn" id="reset" type="button">Benchmark start</button>
+        <button class="btn" id="copy" type="button">Copy formula</button>
+      </div>
+
+      <h3 class="sec">Ingredient shelf</h3>
+      <div class="shelf" id="shelf"></div>
+      <p class="hint">Drag onto the bottle, or tap to add. Blue dots show how many benchmarks contain it.</p>
+
+      <h3 class="sec">In the bottle <span id="total"></span></h3>
+      <div id="zones"></div>
+
+      <h3 class="sec">Stability, from theory</h3>
+      <div class="read">
+        <div class="ring"><svg viewBox="0 0 100 100"><circle class="t" cx="50" cy="50" r="46"/><circle class="v" id="ringv" cx="50" cy="50" r="46" stroke-dasharray="289" stroke-dashoffset="289"/></svg>
+          <div><b id="score">–</b><small id="scorel"></small></div></div>
+        <div><ul class="chk" id="checks"></ul><details class="ok"><summary id="oksum"></summary><ul class="chk" id="okchecks"></ul></details></div>
+      </div>
+
+      <h3 class="sec">Predicted feel <span id="form"></span></h3>
+      <div class="feel" id="feel"></div>
+      <p class="note">Theory-based starting points, not tested formulas. Layer heights follow % w/w; layers too thin to see are drawn a few pixels thick. Full compliance checks per country are on the Formulation page.</p>
+    </div>
+  </section>
+</div>
+
+<div id="tip"></div>
+<div id="toast" role="status"></div>
+
+<script>window.__DATA__ = /*__DATA__*/null;</script>
+<script>
+(async function () {
+"use strict";
+const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+const fmt = n => n == null ? "–" : (Math.abs(n) < 0.01 && n !== 0 ? n.toFixed(4) : n.toFixed(2)).replace(/\.?0+$/, "");
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// ============================================================
+// DATA: injected by Streamlit (page_studio.py), or read from the CSV files when opened on its own
+// ============================================================
+function parseCSV(text) {
+  const rows = []; let row = [], cell = "", q = false;
+  text = text.replace(/^﻿/, "");
+  for (let k = 0; k < text.length; k++) {
+    const c = text[k];
+    if (q) { if (c === '"') { if (text[k + 1] === '"') { cell += '"'; k++; } else q = false; } else cell += c; }
+    else if (c === '"') q = true;
+    else if (c === ",") { row.push(cell); cell = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && text[k + 1] === "\n") k++; row.push(cell); cell = ""; if (row.some(x => x !== "")) rows.push(row); row = []; }
+    else cell += c;
+  }
+  if (cell !== "" || row.length) { row.push(cell); rows.push(row); }
+  const head = rows.shift();
+  return rows.map(r => Object.fromEntries(head.map((h, n) => [h, r[n] ?? ""])));
+}
+let DATA = window.__DATA__;
+if (!DATA) {
+  const get = async f => parseCSV(await (await fetch("../" + f)).text());
+  DATA = {ingredients: await get("ingredients.csv"), products: await get("products.csv"), regulations: await get("regulations.csv")};
+}
+const NUM = ["min", "typ", "max", "rhlb", "hlb", "ph_min", "ph_max", "spread", "grease", "tack", "body", "film", "dry", "limit"];
+const num = v => v === "" || v == null ? null : Number(v);
+const INGS = DATA.ingredients.map(r => {
+  const i = {...r};
+  NUM.forEach(k => { if (k in i) i[k] = num(i[k]); });
+  i.qs = !!num(r.qs); i.unsaturated = !!num(r.unsaturated);
+  i.products = (r.products || "").split(";").filter(Boolean);
+  // where it sits in the bottle: oil on top, water in the middle, cool-down additions at the bottom
+  i.zone = (i.cat === "Preservative" || i.cat === "pH adjuster" || i.phase === "Cool-down") ? "cool" : i.phase === "Oil" ? "oil" : "water";
+  return i;
+});
+const ING = Object.fromEntries(INGS.map(i => [i.id, i]));
+const PRODUCTS = DATA.products;
+const REGS = DATA.regulations.map(r => ({...r, limit: num(r.limit)}));
+const ZONES = {oil: "Oil phase", water: "Water phase", cool: "Cool-down"};
+const PALETTE = {
+  oil: ["#F2FAFE", "#CDEBFA", "#A5DBF6", "#7FCBF2", "#DDF2FC", "#B9E3F8", "#92D3F4", "#6CC3F0"],
+  water: ["#0297DE", "#0277B0", "#03A9F4", "#015F8C", "#0288C8"],
+  cool: ["#FC734D", "#FFA588", "#E2552E", "#FFC4B0"],
+};
+INGS.forEach(i => { const peers = INGS.filter(x => x.zone === i.zone); i.color = PALETTE[i.zone][peers.indexOf(i) % PALETTE[i.zone].length]; });
+
+// ============================================================
+// STARTING FORMULA, read from the benchmark products
+// ============================================================
+function emulsifierLevels(a) {
+  const oilIds = Object.keys(a).filter(i => ING[i].phase === "Oil" && ING[i].cat !== "Emulsifier");
+  const emIds = Object.keys(a).filter(i => ING[i].cat === "Emulsifier");
+  const oil = oilIds.reduce((s, i) => s + a[i], 0);
+  const known = oilIds.filter(i => ING[i].rhlb != null);
+  const kt = known.reduce((s, i) => s + a[i], 0);
+  const rhlb = kt ? known.reduce((s, i) => s + ING[i].rhlb * a[i], 0) / kt : 10;
+  let share = Object.fromEntries(emIds.map(i => [i, 1 / emIds.length]));
+  if (emIds.length === 2) {
+    const [x, y] = emIds.map(i => ING[i]);
+    if (x.hlb !== y.hlb) { const s = clamp((rhlb - y.hlb) / (x.hlb - y.hlb), .3, .7); share = {[x.id]: s, [y.id]: 1 - s}; }
+  }
+  emIds.forEach(i => { a[i] = Math.round(clamp(share[i] * 0.22 * oil, ING[i].min, ING[i].max) * 10) / 10; });
+}
+function benchmarkStart() {
+  const n = PRODUCTS.length, a = {};
+  const count = i => i.products.length;
+  INGS.filter(i => i.id !== "aqua" && count(i) * 2 > n).forEach(i => { a[i.id] = i.typ; });
+  if (a.cetstear != null && a.cetearyl != null) delete a.cetstear;          // the same material twice
+  const oilTotal = () => Object.keys(a).filter(i => ING[i].phase === "Oil" && ING[i].cat !== "Emulsifier").reduce((s, i) => s + a[i], 0);
+  const byCount = cats => INGS.filter(i => cats.includes(i.cat) && a[i.id] == null && count(i) > 0).sort((x, y) => count(y) - count(x));
+  for (const i of byCount(["Emollient", "Butter"])) { if (oilTotal() >= 10) break; a[i.id] = i.typ; }
+  if (!Object.keys(a).some(i => ING[i].cat === "Emulsifier")) { const e = byCount(["Emulsifier"])[0]; if (e) a[e.id] = e.typ; }
+  emulsifierLevels(a);
+  return {amounts: a, ptype: "Leave-on", ph: 5.5};
+}
+
+let S;
+try { S = JSON.parse(localStorage.getItem("fx-studio-v1")); } catch (e) {}
+if (!S || !S.amounts || Object.keys(S.amounts).some(i => !ING[i] || i === "aqua")) S = benchmarkStart();
+const save = () => { try { localStorage.setItem("fx-studio-v1", JSON.stringify(S)); } catch (e) {} };
+const water = () => 100 - Object.values(S.amounts).reduce((s, p) => s + p, 0);
+const items = () => [{...ING.aqua, pct: water()}, ...INGS.filter(i => S.amounts[i.id] != null).map(i => ({...i, pct: S.amounts[i.id]}))];
+
+// ============================================================
+// THEORY: the same stability and sensory rules as core.py
+// ============================================================
+function analyse(it, ptype, ph) {
+  const checks = [], add = (l, t, d) => checks.push({l, t, d});
+  if (it.length === 1) return {checks: [{l: "info", t: "The bottle holds only water", d: "Drag an ingredient from the shelf onto the bottle."}], score: null};
+  const w = it[0].pct, sum = (xs) => xs.reduce((s, i) => s + i.pct, 0);
+  const oils = it.filter(i => i.phase === "Oil" && i.cat !== "Emulsifier"), emuls = it.filter(i => i.cat === "Emulsifier");
+  const fatty = it.filter(i => i.cat === "Fatty alcohol"), pres = it.filter(i => i.cat === "Preservative");
+  const oilT = sum(oils), emT = sum(emuls), fatT = sum(fatty), ids = it.map(i => i.id);
+  if (w < 0) add("high", "Over 100%", `Non-water ingredients add up to ${fmt(100 - w)}%. Reduce some amounts.`);
+  else if (w < 50) add("warn", "Low water content", `Water is only ${fmt(w)}%. Very low water can make an O/W emulsion too thick or flip it to W/O.`);
+  else add("ok", "Total = 100%", `Water q.s. to ${fmt(w)}%.`);
+  it.slice(1).forEach(i => {
+    if (i.qs || i.min == null) return;
+    if (i.pct > i.max) add("high", `${i.short} above usual maximum`, `${fmt(i.pct)}% is above the usual ${fmt(i.max)}%.`);
+    else if (i.pct < i.min) add("warn", `${i.short} below usual level`, `${fmt(i.pct)}% may be too little to work (usual ${fmt(i.min)}–${fmt(i.max)}%).`);
+  });
+  if (oilT > 0 && !emuls.length) add("high", "No emulsifier", "Oil and water will separate. Add an emulsifier.");
+  else if (oilT > 0) {
+    const r = emT / oilT, txt = `Emulsifier is ${(r * 100).toFixed(0)}% of the oil phase (rule of thumb: about 15–30%).`;
+    if (r < .10) add("high", "Too little emulsifier for the oil load", txt);
+    else if (r < .15) add("warn", "Emulsifier on the low side", txt);
+    else if (r > .40) add("warn", "Excess emulsifier", txt + " Too much can feel soapy or tacky.");
+    else add("ok", "Emulsifier amount OK", txt);
+  }
+  const known = oils.filter(i => i.rhlb != null && i.pct > 0), unknown = oils.filter(i => i.rhlb == null && i.pct > 0);
+  if (known.length && emuls.length && emT > 0) {
+    const r = known.reduce((s, i) => s + i.rhlb * i.pct, 0) / sum(known), b = emuls.reduce((s, i) => s + i.hlb * i.pct, 0) / emT, d = Math.abs(r - b);
+    add(d <= 1.5 ? "ok" : d <= 3 ? "warn" : "high", d <= 1.5 ? "HLB matched" : d <= 3 ? "HLB slightly off" : "HLB mismatch",
+      `Oil phase needs HLB ≈ ${r.toFixed(1)}; the emulsifier blend gives ≈ ${b.toFixed(1)}. Indicative only.`);
+  }
+  if (unknown.length) add("info", "Missing required-HLB data", `${unknown.map(i => i.short).join(", ")} left out of the HLB calculation. Add the value from the supplier TDS.`);
+  if (oilT > 0) {
+    if (oilT < 5) add("warn", "Very light oil phase", `Oil phase ${fmt(oilT)}%: likely a thin, watery lotion.`);
+    else if (oilT > 40) add("high", "Oil phase very high", `Oil phase ${fmt(oilT)}% is hard to keep stable as O/W.`);
+    else if (oilT > 30) add("warn", "Rich oil phase", `Oil phase ${fmt(oilT)}%: needs a strong emulsifier system.`);
+    else add("ok", "Oil phase in lotion range", `Oil phase ${fmt(oilT)}% (typical 10–30%).`);
+  }
+  if (oilT > 0 && fatT === 0) add("warn", "No fatty alcohol", "Without a thickener such as cetearyl alcohol the lotion stays thin and droplets can cream over time.");
+  else if (fatT > 7) add("warn", "High fatty alcohol", `${fmt(fatT)}% may feel waxy and keep thickening during storage.`);
+  if (ids.includes("cetstear") && ids.includes("cetearyl")) add("warn", "Duplicate ingredient", "Cetyl/Stearyl Alcohol and Cetearyl Alcohol are the same material. Keep only one.");
+  it.forEach(i => { if (i.id === "shea" && i.pct > 5) add("warn", "Graininess risk", `Shea butter at ${fmt(i.pct)}% can form crystals. Cool the batch quickly while stirring.`); });
+  const unsat = it.filter(i => i.unsaturated && i.pct > 0);
+  if (unsat.length && !it.some(i => i.cat === "Antioxidant")) add("warn", "Rancidity risk", `${unsat.map(i => i.short).join(" and ")} can oxidise. Consider an antioxidant (e.g. tocopherol 0.1–0.5%).`);
+  if (!pres.length) add("high", "No preservative", "Any water-based product will grow microbes. Add a preservative system.");
+  if (ids.includes("mit") && pres.length === 1) add("warn", "Weak against yeast and mould", "MIT alone has poor antifungal activity. A second preservative is usually needed.");
+  if (ids.includes("tapioca") && pres.length) add("info", "Starch raises microbial load", "Check preservative efficacy with a challenge test.");
+  it.forEach(i => { if (i.ph_min != null && !(i.ph_min <= ph && ph <= i.ph_max)) add("warn", `pH outside ${i.short} range`, `Target pH ${ph}; ${i.short} works best at pH ${fmt(i.ph_min)}–${fmt(i.ph_max)}.`); });
+  if (ids.includes("naoh") && !it.some(i => i.cat === "Acid / polymer")) add("info", "NaOH may not be needed", "Nothing acidic is in the formula yet. Add NaOH only if the measured pH is below target.");
+  const ch = new Set(it.map(i => i.charge));
+  if (ch.has("anionic") && ch.has("cationic")) add("high", "Charge incompatibility", "Anionic and cationic ingredients can react and destabilise the emulsion.");
+  let score = 100 - 20 * checks.filter(c => c.l === "high").length - 7 * checks.filter(c => c.l === "warn").length;
+  if (w < 0) score = 0;
+  // rules on file (regulations.csv): shown, but not part of the stability score
+  const hits = {};
+  REGS.forEach(r => {
+    const i = it.find(x => x.id === r.ingredient && x.pct > 0);
+    if (!i || !["Both", ptype].includes(r.applies_to)) return;
+    const bad = r.rule === "prohibited" ? `${i.short} is not allowed in ${ptype.toLowerCase()} products`
+      : r.rule === "max_pct" && i.pct > r.limit ? `${i.short} is above the legal limit of ${fmt(r.limit)}%`
+      : r.rule === "max_ph" && ph >= r.limit ? `Target pH must stay below ${fmt(r.limit)} for ${i.short}` : null;
+    if (bad) (hits[bad] = hits[bad] || []).push(r.country);
+  });
+  Object.entries(hits).forEach(([t, cs]) => checks.push({l: "high", rule: true, t, d: `Rule on file for ${[...new Set(cs)].join(", ")}.`}));
+  return {checks, score: clamp(score, 0, 100)};
+}
+const SENSES = {body: ["Body", 20], spread: ["Spreadability", 0], absorb: ["Absorption speed", 0], grease: ["Greasiness", 30], tack: ["Tackiness", 24], dry: ["Dry, powdery finish", 40], film: ["Skin film", 35]};
+function sensory(it) {
+  const known = it.slice(1).filter(i => i.body != null && i.pct > 0);
+  if (!known.length) return null;
+  const out = {};
+  for (const [k, [, mid]] of Object.entries(SENSES)) if (mid) { const load = Math.max(0, known.reduce((s, i) => s + i[k] * i.pct, 0)); out[k] = 10 * load / (load + mid); }
+  const sp = known.filter(i => i.spread != null);
+  out.spread = sp.length ? clamp(2 * sp.reduce((s, i) => s + i.spread * i.pct, 0) / sp.reduce((s, i) => s + i.pct, 0) - .3 * Math.max(0, out.body - 5), 0, 10) : null;
+  out.absorb = clamp(10 - .6 * out.grease - .4 * out.film, 0, 10);
+  return out;
+}
+
+// ============================================================
+// THE BOTTLE: layers ease toward their target every frame
+// ============================================================
+const NS = "http://www.w3.org/2000/svg", TOP = 150, BOT = 530, H = BOT - TOP, MINH = 6;
+const gLayers = $("#layers"), gSeams = $("#seams"), gBub = $("#bubbles"), air = $("#air"), bottle = $("#bottle");
+const L = {};            // id -> {el, y, h, ty, th, o, to, dead}
+let focusZone = null, hot = null, wave = reduced ? 0 : 6;
+function order() {
+  const it = items(), z = k => it.filter(i => i.zone === k && i.pct > 0);
+  return [...z("oil"), ...z("water"), ...z("cool")];
+}
+function layout() {
+  const ord = order(), total = ord.reduce((s, i) => s + i.pct, 0) || 1;
+  const thin = ord.filter(i => i.pct / total * H < MINH), rest = ord.filter(i => !thin.includes(i));
+  const restT = rest.reduce((s, i) => s + i.pct, 0) || 1, free = H - MINH * thin.length;
+  let y = TOP; const seen = new Set();
+  ord.forEach(i => {
+    const h = thin.includes(i) ? MINH : free * i.pct / restT;
+    let l = L[i.id];
+    if (!l) {
+      const el = document.createElementNS(NS, "rect");
+      el.setAttribute("x", 60); el.setAttribute("width", 180); el.setAttribute("class", "layer"); el.setAttribute("fill", i.color); el.dataset.id = i.id;
+      gLayers.appendChild(el);
+      l = L[i.id] = {el, y: y, h: 0, o: 1};
+    }
+    l.ty = y; l.th = h; l.dead = false; l.zone = i.zone; seen.add(i.id); y += h;
+  });
+  Object.entries(L).forEach(([id, l]) => { if (!seen.has(id)) { l.dead = true; l.th = 0; } });
+  if (!reduced) wave = Math.min(14, wave + 5);
+}
+// a few bubbles drifting up through the water phase
+const bubs = reduced ? [] : Array.from({length: 9}, () => { const c = document.createElementNS(NS, "circle"); c.setAttribute("fill", "rgba(255,255,255,.35)"); gBub.appendChild(c); return {c, x: 0, y: 0, r: 0, v: 0, t: Math.random() * 6}; });
+
+const mover = $("#mover"), tilt = $("#tilt"), stagebg = $("#stagebg"), phl = Object.fromEntries($$(".phl").map(e => [e.dataset.z, e]));
+let mx = 0, my = 0, cx = 0, cy = 0, slosh = 0, sp = 0, t0 = performance.now(), last = t0;
+addEventListener("pointermove", e => {
+  mx = e.clientX / innerWidth - .5; my = e.clientY / innerHeight - .5;
+  document.body.style.setProperty("--mx", e.clientX + "px"); document.body.style.setProperty("--my", e.clientY + "px");
+}, {passive: true});
+function frame(now) {
+  // easing is tied to elapsed time, so it runs at the same speed on a slow screen as on a fast one
+  const t = (now - t0) / 1000, dt = Math.min(.5, (now - last) / 1000) * 60, ease = r => reduced ? 1 : 1 - Math.pow(1 - r, dt), k = ease(.14);
+  last = now;
+  // scroll: the bottle glides from the centre of the hero to its dock
+  const target = clamp(scrollY / (innerHeight * .8), 0, 1);
+  sp += (target - sp) * ease(.09);
+  const e = sp * sp * (3 - 2 * sp), wide = innerWidth >= 900;
+  const tx = wide ? -0.22 * innerWidth * e : 0, ty = wide ? 0 : (0.1 - 0.39 * e) * innerHeight, sc = wide ? 1 - .06 * e : .8 - .32 * e;
+  mover.style.transform = `translate(${tx.toFixed(1)}px,${ty.toFixed(1)}px) scale(${sc.toFixed(3)})`;
+  stagebg.style.opacity = e;
+  // cursor: the bottle leans toward it and the liquid sloshes behind
+  const px = cx; cx += (mx - cx) * ease(.07); cy += (my - cy) * ease(.07);
+  if (!reduced) tilt.style.transform = `rotateY(${(cx * 16).toFixed(2)}deg) rotateX(${(-cy * 9).toFixed(2)}deg)`;
+  slosh += ((cx - px) * -900 - slosh) * .08; slosh = clamp(slosh, -16, 16);
+  $("#shineL").setAttribute("x", 80 - cx * 26);
+  wave += ((reduced ? 0 : 1.6) - wave) * .03;
+
+  // layers
+  const zb = {};
+  for (const [id, l] of Object.entries(L)) {
+    l.y += (l.ty - l.y) * k; l.h += (l.th - l.h) * k;
+    const to = hot ? (hot.has(id) ? 1 : .16) : focusZone ? (l.zone === focusZone ? 1 : .2) : 1;
+    l.o += (to - l.o) * ease(.12);
+    if (l.dead && l.h < .4) { l.el.remove(); delete L[id]; continue; }
+    l.el.setAttribute("y", l.y.toFixed(2)); l.el.setAttribute("height", Math.max(0, l.h + .6).toFixed(2)); l.el.setAttribute("opacity", l.o.toFixed(2));
+    if (!l.dead) { const b = zb[l.zone] = zb[l.zone] || [1e9, -1e9]; b[0] = Math.min(b[0], l.y); b[1] = Math.max(b[1], l.y + l.h); }
+  }
+  // phase labels beside the bottle, and the seams between phases
+  let seams = "";
+  for (const z of Object.keys(ZONES)) {
+    const el = phl[z], b = zb[z];
+    if (!b) { el.style.opacity = 0; continue; }
+    el.style.opacity = wide ? e * (focusZone && focusZone !== z ? .35 : 1) : 0;
+    el.style.top = ((b[0] + b[1]) / 2 / 560 * 100).toFixed(2) + "%";
+    el.style.setProperty("--h", Math.max(8, (b[1] - b[0]) / 560 * tilt.offsetHeight - 6).toFixed(0) + "px");
+    if (z !== "oil" && b[0] > TOP + 1) seams += `<line x1="60" x2="240" y1="${b[0].toFixed(1)}" y2="${b[0].toFixed(1)}" stroke="#02070A" stroke-opacity=".55" stroke-width="1.5"/>`;
+  }
+  gSeams.innerHTML = seams;
+  // liquid surface
+  let d = "M40,100 L260,100";
+  for (let n = 12; n >= 0; n--) {
+    const x = 60 + n * 15, u = (x - 150) / 90;
+    d += ` L${x},${(TOP + 3 + u * slosh + wave * (Math.sin(t * 2.2 + n * .7) * .6 + Math.sin(t * 3.7 + n * 1.3) * .4)).toFixed(2)}`;
+  }
+  air.setAttribute("d", d + " Z");
+  // bubbles live in the water phase only
+  const wb = zb.water;
+  bubs.forEach(b => {
+    b.t -= 1 / 60;
+    if (!wb || wb[1] - wb[0] < 30) { b.c.setAttribute("r", 0); return; }
+    if (b.t <= 0 || b.y < wb[0] + 6) { b.x = 80 + Math.random() * 140; b.y = wb[1] - 4; b.r = .8 + Math.random() * 2.2; b.v = .25 + Math.random() * .6; b.t = 4 + Math.random() * 8; }
+    b.y -= b.v; b.x += Math.sin(t * 2 + b.r * 9) * .25 + slosh * .01;
+    b.c.setAttribute("cx", b.x.toFixed(1)); b.c.setAttribute("cy", b.y.toFixed(1)); b.c.setAttribute("r", b.r.toFixed(1));
+  });
+  requestAnimationFrame(frame);
+}
+
+// ============================================================
+// PANELS: lists, shelf, rows, read-outs
+// ============================================================
+const dots = i => `<span class="dots" title="In ${i.products.length} of ${PRODUCTS.length} benchmarks">${PRODUCTS.map((p, n) => `<i class="${n < i.products.length ? "on" : ""}"></i>`).join("")}</span>`;
+const sw = i => `<span class="sw" style="background:${i.color}"></span>`;
+const stepFor = i => i.max != null && i.max < 0.01 ? 0.0001 : 0.1;
+const sliderMax = i => i.max == null ? 10 : i.max < 0.01 ? i.max * 2 : Math.ceil(i.max * 1.5);
+
+function buildStatic() {
+  const words = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
+  $("#nprod").textContent = words[PRODUCTS.length] || PRODUCTS.length;
+  $("#cards").innerHTML = PRODUCTS.map((p, n) => `<a class="card" href="${esc(p.url)}" target="_blank" rel="noopener" data-code="${esc(p.code)}">
+    <span class="k">${String(n + 1).padStart(2, "0")}</span><b>${esc(p.name)}</b><small>${esc(p.type)} ↗</small></a>`).join("");
+  $$(".card").forEach(c => {
+    const on = () => { hot = new Set(INGS.filter(i => i.products.includes(c.dataset.code)).map(i => i.id)); $$(`#matrix [data-code="${c.dataset.code}"]`).forEach(x => x.classList.add("hot")); };
+    const off = () => { hot = null; $$("#matrix .hot").forEach(x => x.classList.remove("hot")); };
+    c.addEventListener("pointerenter", on); c.addEventListener("pointerleave", off); c.addEventListener("focus", on); c.addEventListener("blur", off);
+  });
+}
+function buildMatrix() {
+  const rows = [...INGS].sort((a, b) => b.products.length - a.products.length).filter(i => i.products.length);
+  $("#matrix").innerHTML = `<tr><th>Ingredient</th>${PRODUCTS.map((p, n) => `<th data-code="${esc(p.code)}">${String(n + 1).padStart(2, "0")}</th>`).join("")}<th></th></tr>` +
+    rows.map(i => `<tr class="${i.id === "aqua" || S.amounts[i.id] != null ? "in" : ""}" data-id="${i.id}"><td>${esc(i.short)}</td>${
+      PRODUCTS.map(p => `<td data-code="${esc(p.code)}"><i class="${i.products.includes(p.code) ? "on" : ""}"></i></td>`).join("")}<td>${i.products.length}/${PRODUCTS.length}</td></tr>`).join("");
+  $$("#matrix tr[data-id]").forEach(tr => { tr.addEventListener("pointerenter", () => { hot = new Set([tr.dataset.id]); }); tr.addEventListener("pointerleave", () => { hot = null; }); });
+}
+function buildShelf() {
+  const out = INGS.filter(i => i.id !== "aqua" && S.amounts[i.id] == null);
+  $("#shelf").innerHTML = out.length ? out.map(i => `<div class="chip" role="button" tabindex="0" data-id="${i.id}" aria-label="Add ${esc(i.short)} to the bottle">${sw(i)}${esc(i.short)}${dots(i)}</div>`).join("")
+    : `<span class="hint">Everything in your library is in the bottle.</span>`;
+  $$("#shelf .chip").forEach(c => {
+    c.addEventListener("pointerdown", e => drag(e, c.dataset.id, "add"));
+    c.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); addIng(c.dataset.id); } });
+    tipOn(c, c.dataset.id);
+  });
+}
+function buildRows() {
+  const it = items();
+  $("#zones").innerHTML = Object.entries(ZONES).map(([z, label]) => {
+    const rows = it.filter(i => i.zone === z).map(i => {
+      if (i.id === "aqua") return `<div class="row" data-id="aqua">${sw(i)}<div class="nm"><b>Water</b><small>Fills the formula to 100%</small></div><div class="qs">q.s. <b id="wq"></b></div></div>`;
+      const mxs = sliderMax(i), a = i.min == null ? 0 : i.min / mxs * 100, b = i.max == null ? 0 : i.max / mxs * 100;
+      return `<div class="row" data-id="${i.id}">${sw(i)}<div class="nm"><b>${esc(i.short)}</b><small>usual ${fmt(i.min)}–${fmt(i.max)}%${i.qs ? " q.s." : ""}</small></div>
+        <input type="range" min="0" max="${mxs}" step="${stepFor(i)}" value="${i.pct}" style="--a:${a}%;--b:${b}%" aria-label="${esc(i.short)} amount">
+        <label class="num"><input type="number" min="0" max="100" step="${stepFor(i)}" value="${fmt(i.pct)}" aria-label="${esc(i.short)} percent">%</label>
+        <button class="rm" type="button" aria-label="Remove ${esc(i.short)}">×</button></div>`;
+    }).join("");
+    return `<div class="zone" data-z="${z}"><header>${label}<span data-zt="${z}"></span></header>${rows || `<div class="none">Nothing here yet. Drag an ingredient onto the bottle.</div>`}</div>`;
+  }).join("");
+  $$("#zones .row").forEach(r => {
+    const id = r.dataset.id;
+    r.addEventListener("pointerenter", () => { hot = new Set([id]); }); r.addEventListener("pointerleave", () => { hot = null; });
+    if (id === "aqua") return;
+    const range = $("input[type=range]", r), numEl = $("input[type=number]", r);
+    const set = (v, from) => {
+      v = clamp(Number(v) || 0, 0, 100); S.amounts[id] = Math.round(v * 1e4) / 1e4;
+      if (from !== range) range.value = v; if (from !== numEl) numEl.value = fmt(v);
+      layout(); refresh();
+    };
+    range.addEventListener("input", () => set(range.value, range));
+    numEl.addEventListener("input", () => set(numEl.value, numEl));
+    $(".rm", r).addEventListener("click", () => removeIng(id));
+  });
+}
+function refresh() {
+  const it = items(), w = it[0].pct;
+  // story lists
+  $$("[data-list]").forEach(ul => {
+    const rows = it.filter(i => i.zone === ul.dataset.list && i.pct > 0);
+    ul.innerHTML = rows.length ? rows.map(i => `<li>${sw(i)}<span class="n">${esc(i.inci)}<small>${esc(i.func)}</small></span>${dots(i)}<span class="p">${fmt(i.pct)}%</span></li>`).join("")
+      : `<li class="empty">Nothing in this phase yet. Add one in the studio below.</li>`;
+  });
+  // totals
+  for (const z of Object.keys(ZONES)) {
+    const tot = it.filter(i => i.zone === z).reduce((s, i) => s + Math.max(0, i.pct), 0), txt = fmt(tot) + "%";
+    const a = $(`[data-zt="${z}"]`); if (a) a.textContent = txt;
+    $("b", phl[z]).textContent = txt;
+  }
+  const wq = $("#wq"); if (wq) wq.textContent = fmt(w) + "%";
+  $("#total").textContent = w < 0 ? `${fmt(100 - w)}% — over 100` : "100%";
+  $("#total").style.color = w < 0 ? "var(--orange)" : "";
+  $$("#zones .row").forEach(r => { const i = ING[r.dataset.id], p = S.amounts[i.id]; r.classList.toggle("off", p != null && !i.qs && i.min != null && (p > i.max || p < i.min)); });
+  $$("#matrix tr[data-id]").forEach(tr => tr.classList.toggle("in", tr.dataset.id === "aqua" || S.amounts[tr.dataset.id] != null));
+  // stability
+  const {checks, score} = analyse(it, S.ptype, S.ph), rank = {high: 0, warn: 1, info: 2};
+  const li = c => `<li class="${c.l}"><b>${esc(c.t)}</b>${esc(c.d)}</li>`;
+  const bad = checks.filter(c => c.l !== "ok").sort((a, b) => rank[a.l] - rank[b.l]), ok = checks.filter(c => c.l === "ok");
+  $("#checks").innerHTML = bad.map(li).join("") || `<li><b>No risks flagged</b>Every theory check passes.</li>`;
+  $("#okchecks").innerHTML = ok.map(li).join(""); $("#oksum").textContent = `Passed checks (${ok.length})`; $("details.ok").hidden = !ok.length;
+  $("#score").textContent = score == null ? "–" : score;
+  const illegal = checks.some(c => c.rule);   // a legal conflict outranks a good stability score
+  $("#scorel").textContent = score == null ? "" : illegal ? "Breaks a rule on file" : score >= 80 ? "Low predicted risk" : score >= 55 ? "Moderate risk" : "High risk";
+  const rv = $("#ringv"); rv.style.strokeDashoffset = 289 * (1 - (score || 0) / 100);
+  rv.style.stroke = illegal ? "var(--orange)" : score >= 80 ? "var(--blue)" : score >= 55 ? "#FFB199" : "var(--orange)";
+  // feel
+  const s = sensory(it);
+  $("#feel").innerHTML = Object.entries(SENSES).map(([k, [label]]) => { const v = s ? s[k] : null;
+    return `<span>${label}</span><div class="bar"><i style="width:${v == null ? 0 : v * 10}%"></i></div><b>${v == null ? "–" : v.toFixed(1)}</b>`; }).join("");
+  $("#form").textContent = !s ? "" : s.body < 3 ? "Milk or serum" : s.body < 6 ? "Lotion" : s.body < 8 ? "Cream" : "Rich cream or butter";
+  $$(".seg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.pt === S.ptype));
+  save();
+}
+function rebuild() { buildShelf(); buildRows(); layout(); refresh(); }
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove("on"), 2200); }
+function addIng(id) {
+  if (S.amounts[id] != null) return;
+  S.amounts[id] = ING[id].typ ?? 1; rebuild();
+  const r = $(`#zones .row[data-id="${id}"]`); if (r) { r.classList.add("flash"); setTimeout(() => r.classList.remove("flash"), 900); }
+  toast(`${ING[id].short} poured into the ${ZONES[ING[id].zone].toLowerCase()}`);
+}
+function removeIng(id) { if (id === "aqua" || S.amounts[id] == null) return; delete S.amounts[id]; hot = null; rebuild(); toast(`${ING[id].short} removed`); }
+
+// ============================================================
+// DRAG AND DROP (pointer events, so it works with mouse, pen and touch)
+// ============================================================
+function overBottle(e) { const r = bottle.getBoundingClientRect(), m = 24; return e.clientX > r.left - m && e.clientX < r.right + m && e.clientY > r.top - m && e.clientY < r.bottom + m; }
+function drag(e, id, mode) {
+  if (e.button > 0) return;
+  const src = e.currentTarget, sx = e.clientX, sy = e.clientY, i = ING[id]; let ghost = null;
+  try { src.setPointerCapture(e.pointerId); } catch (err) {}
+  const move = ev => {
+    if (!ghost && Math.hypot(ev.clientX - sx, ev.clientY - sy) > 6) {
+      ghost = document.createElement("div"); ghost.className = "chip ghost"; ghost.innerHTML = sw(i) + esc(i.short);
+      document.body.appendChild(ghost); document.body.classList.add("dragging", mode); hideTip();
+    }
+    if (ghost) {
+      ghost.style.transform = `translate(${ev.clientX + 14}px,${ev.clientY - 18}px)`;
+      const over = overBottle(ev); document.body.classList.toggle("over", over); document.body.classList.toggle("out", !over);
+    }
+  };
+  const up = ev => {
+    src.removeEventListener("pointermove", move); src.removeEventListener("pointerup", up); src.removeEventListener("pointercancel", up);
+    const moved = !!ghost, over = overBottle(ev);
+    if (ghost) ghost.remove(); document.body.classList.remove("dragging", "add", "remove", "over", "out");
+    if (ev.type === "pointercancel") return;
+    if (mode === "add") { if (!moved || over) addIng(id); }
+    else if (moved && !over) removeIng(id);
+    else if (!moved) { const r = $(`#zones .row[data-id="${id}"]`); if (r) { r.scrollIntoView({behavior: "smooth", block: "center"}); r.classList.add("flash"); setTimeout(() => r.classList.remove("flash"), 1200); } }
+  };
+  src.addEventListener("pointermove", move); src.addEventListener("pointerup", up); src.addEventListener("pointercancel", up);
+  e.preventDefault();
+}
+// a layer in the bottle can be pulled out to remove it (water stays: it is whatever is left)
+gLayers.addEventListener("pointerdown", e => {
+  const id = e.target.dataset && e.target.dataset.id;
+  if (id) drag({button: e.button, clientX: e.clientX, clientY: e.clientY, pointerId: e.pointerId, currentTarget: e.target, preventDefault: () => e.preventDefault()}, id, "remove");
+});
+
+// tooltips
+const tip = $("#tip");
+function showTip(id, e) {
+  const i = ING[id], p = id === "aqua" ? water() : S.amounts[id];
+  tip.innerHTML = `<b>${esc(i.short)}${p != null ? ` · ${fmt(p)}%` : ""}</b>${esc(i.func)}<br><u>${ZONES[i.zone]}</u> · in ${i.products.length} of ${PRODUCTS.length} benchmarks`;
+  tip.classList.add("on"); moveTip(e);
+}
+function moveTip(e) { const w = tip.offsetWidth, x = e.clientX + 18 + w > innerWidth ? e.clientX - w - 18 : e.clientX + 18; tip.style.left = x + "px"; tip.style.top = clamp(e.clientY + 14, 8, innerHeight - tip.offsetHeight - 8) + "px"; }
+function hideTip() { tip.classList.remove("on"); }
+function tipOn(el, id) { el.addEventListener("pointerenter", e => { if (e.pointerType === "mouse") showTip(id, e); }); el.addEventListener("pointermove", e => { if (tip.classList.contains("on")) moveTip(e); }); el.addEventListener("pointerleave", hideTip); }
+gLayers.addEventListener("pointermove", e => { const id = e.target.dataset && e.target.dataset.id; if (id && !document.body.classList.contains("dragging")) { showTip(id, e); hot = new Set([id]); } });
+gLayers.addEventListener("pointerleave", () => { hideTip(); hot = null; });
+
+// controls
+$$(".seg button").forEach(b => b.addEventListener("click", () => { S.ptype = b.dataset.pt; refresh(); }));
+const phEl = $("#ph"); phEl.value = S.ph;
+phEl.addEventListener("input", () => { const v = Number(phEl.value); if (v >= 3 && v <= 9) { S.ph = v; refresh(); } });
+$("#reset").addEventListener("click", () => { S = benchmarkStart(); phEl.value = S.ph; rebuild(); toast("Back to the benchmark starting formula"); });
+$("#copy").addEventListener("click", async () => {
+  const it = items(), lines = [`Formulator Studio — ${S.ptype}, target pH ${S.ph}`];
+  for (const [z, label] of Object.entries(ZONES)) { const rows = it.filter(i => i.zone === z && i.pct > 0); if (rows.length) { lines.push("", label); rows.forEach(i => lines.push(`${i.inci}\t${fmt(i.pct)}%`)); } }
+  const text = lines.join("\n");
+  try { await navigator.clipboard.writeText(text); }
+  catch (e) { const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
+  toast("Formula copied. Paste it into Excel or a message.");
+});
+
+// scroll: reveal sections, and focus the phase being read
+const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) e.target.classList.add("in"); }), {threshold: .12});
+$$(".reveal").forEach(el => io.observe(el));
+const steps = $$(".step"), links = $$("#bar nav a");
+function onScroll() {
+  const mid = innerHeight * .55; focusZone = null;
+  steps.forEach(s => { const r = s.getBoundingClientRect(); if (r.top < mid && r.bottom > mid) focusZone = s.dataset.zone; });
+  let cur = ""; ["phases", "bench", "studio"].forEach(id => { if ($("#" + id).getBoundingClientRect().top < innerHeight * .6) cur = id; });
+  if (cur === "phases" && !focusZone && scrollY < innerHeight * .3) cur = "";
+  links.forEach(a => a.classList.toggle("on", a.getAttribute("href") === "#" + cur));
+}
+addEventListener("scroll", onScroll, {passive: true});
+
+buildStatic(); buildMatrix(); rebuild(); onScroll();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
