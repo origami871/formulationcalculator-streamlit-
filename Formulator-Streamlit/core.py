@@ -50,9 +50,9 @@ TOKENS = {
     "light": {"ink": "#2a251f", "muted": "#6b6357", "line": "#d9d2c6", "surface": "#fdfcfa", "sunken": "#f6f3ee",
               "bottle_line": "#3a352e", "A": "#1c6a86", "B": "#a8520f", "on_tag": "#ffffff", "on_primary": "#ffffff",
               "high": "#b3261e", "warn": "#8a5a00", "ok": "#2e6b4f"},
-    "dark": {"ink": "#f3ede3", "muted": "#b3aa9b", "line": "#4a443a", "surface": "#1d1a16", "sunken": "#27231e",
-             "bottle_line": "#cfc7b8", "A": "#7cc4e3", "B": "#f0a95c", "on_tag": "#1d1a16", "on_primary": "#1d1a16",
-             "high": "#f2a099", "warn": "#e8c06a", "ok": "#8fd0ae"},
+    "dark": {"ink": "#EAF4FA", "muted": "#9DB2BF", "line": "#1B2B36", "surface": "#02070A", "sunken": "#0A1820",
+             "bottle_line": "#BFD3DE", "A": "#0297DE", "B": "#FC734D", "on_tag": "#02070A", "on_primary": "#02070A",
+             "high": "#FC734D", "warn": "#FFB199", "ok": "#7CCBF2"},
 }
 MONO = "'IBM Plex Mono', ui-monospace, monospace"
 
