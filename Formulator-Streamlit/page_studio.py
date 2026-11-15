@@ -1,6 +1,6 @@
 """Studio page: the interactive bottle.
 
-The page itself is studio/index.html (plain HTML, CSS and JavaScript). This file:
+The page itself is studio.html (plain HTML, CSS and JavaScript). This file:
   1. hands it the data from the CSV files and shows it full-screen under the menu,
   2. receives "Send to Formula A" and puts the formula on the Formulation page,
   3. receives "Ask Claude" questions and answers them with the Claude API.
@@ -14,7 +14,7 @@ Ask Claude needs an API key. Never put the key in a file you upload to GitHub. I
 Without a key everything else still works and the Ask section says Claude is not connected.
 
 Fonts: put the PP Editorial New and PP Neue Montreal files (.woff2 or .otf, named PPEditorialNew-Regular,
-PPEditorialNew-Italic, PPNeueMontreal-Book, PPNeueMontreal-Medium) in studio/fonts/ and they are used
+PPEditorialNew-Italic, PPNeueMontreal-Book, PPNeueMontreal-Medium) in a folder named fonts next to app.py and they are used
 automatically. Without them the page falls back to Instrument Serif and Inter Tight.
 """
 import base64
@@ -39,9 +39,9 @@ def rows(name):
 
 
 def font_faces():
-    """@font-face rules for every licensed font file found in studio/fonts/, embedded in the page."""
+    """@font-face rules for every licensed font file found in a folder named fonts next to app.py, embedded in the page."""
     css = ""
-    for f in sorted((HERE / "studio" / "fonts").glob("*")):
+    for f in sorted((HERE / "fonts").glob("*")):
         low, ext = f.stem.lower().replace(" ", "").replace("-", ""), f.suffix.lower()
         family = "PP Editorial New" if "editorialnew" in low else "PP Neue Montreal" if "neuemontreal" in low else None
         if family is None or ext not in (".woff2", ".woff", ".otf", ".ttf"):
@@ -59,7 +59,7 @@ def font_faces():
 def load(stamp):  # stamp changes when a file changes, which makes Streamlit load again
     """The data from the CSV files, and the studio page with that data written into it."""
     data = {"ingredients": rows("ingredients.csv"), "products": rows("products.csv"), "regulations": rows("regulations.csv")}
-    html = (HERE / "studio" / "index.html").read_text(encoding="utf-8")
+    html = (HERE / "studio.html").read_text(encoding="utf-8")
     html = html.replace("/*__DATA__*/null", json.dumps(data).replace("</", "<\\/"))
     return data, html.replace("/*__FONTS__*/", font_faces())
 
@@ -151,8 +151,8 @@ def ask_claude(history, question, context, ingredients):
 
 
 # ---- the page ----
-watched = [HERE / "studio" / "index.html", HERE / "ingredients.csv", HERE / "products.csv", HERE / "regulations.csv",
-           *(HERE / "studio" / "fonts").glob("*")]
+watched = [HERE / "studio.html", HERE / "ingredients.csv", HERE / "products.csv", HERE / "regulations.csv",
+           *(HERE / "fonts").glob("*")]
 data, html = load(tuple(p.stat().st_mtime for p in watched if p.is_file()))
 chat = st.session_state.setdefault("studio_chat", [])
 
