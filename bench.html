@@ -336,7 +336,7 @@ function act(s, what) {
   else {
     if (what === "suggest") {
       const r = D.suggest(F[s].amounts, F[s].ptype, F[s].ph);
-      msg = [r.added.length ? `Added ${D.names(r.added)}.` : "", r.removed.length ? `Removed ${D.names(r.removed)}.` : "", "Levels set to theory-based starting points."].join(" ").trim();
+      msg = [r.added.length ? `Added ${D.names(r.added)}.` : "", r.removed.length ? `Removed ${D.names(r.removed)}.` : "", "Levels set to theory-based starting points."].filter(Boolean).join(" ");
     } else if (what === "copy") { F[s] = JSON.parse(JSON.stringify(F[o])); F[s].name = `${F[o].name} (copy)`.slice(0, 60); msg = `Formula ${s} is now a copy of formula ${o}`; }
     else if (what === "clear") { F[s].amounts = {}; msg = `Formula ${s} cleared. Press Undo to bring it back.`; }
     undo[s] = before;

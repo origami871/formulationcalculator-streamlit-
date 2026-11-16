@@ -699,7 +699,7 @@ SITE_CSS = """
 .fx-step{border:1px solid var(--fx-line);border-radius:16px;background:var(--fx-panel);padding:16px 18px}
 .fx-step span{font-size:12px;letter-spacing:.14em;color:var(--fx-orange)}
 .fx-step b{display:block;font-family:var(--fx-serif);font-weight:400;font-size:24px;line-height:1.1;margin:6px 0 8px}
-.fx-step p{margin:0;color:var(--fx-muted);font-size:14px;line-height:1.45}
+.fx-step p{margin:0;color:var(--fx-muted);font-size:14px!important;line-height:1.45}
 .stApp [data-testid="stPills"] button,.stApp [data-testid="stBaseButton-pills"],.stApp [data-testid="stBaseButton-pillsActive"]{border-radius:999px}
 
 /* Ask Claude: a button fixed to the bottom right corner of every page */
@@ -710,9 +710,9 @@ SITE_CSS = """
 .st-key-fx_claude [data-testid="stPopover"]>div>button *,.st-key-fx_claude [data-testid="stPopoverButton"] *{color:var(--fx-ink);font-weight:500}
 [data-testid="stPopoverBody"]{background:#040d12;border:1px solid var(--fx-line);border-radius:20px;width:min(420px,calc(100vw - 28px));max-height:min(680px,calc(100vh - 110px));
   box-shadow:0 24px 80px rgba(0,0,0,.6)}
-.fx-chat-title{font-family:var(--fx-serif);font-size:28px;line-height:1;margin:0 0 6px}
+p.fx-chat-title{font-family:var(--fx-serif)!important;font-size:30px!important;line-height:1;margin:0 0 8px}
 .fx-chat-title em{font-style:italic;color:var(--fx-orange)}
-.fx-chat-sub{color:var(--fx-muted);font-size:13px;margin:0 0 4px}
+p.fx-chat-sub{color:var(--fx-muted);font-size:13px!important;margin:0 0 4px}
 .fx-msg{max-width:92%;width:fit-content;padding:10px 14px;border-radius:16px;font-size:14.5px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 2px}
 .fx-msg.fx-user{margin-left:auto;background:rgba(2,151,222,.16);border:1px solid rgba(2,151,222,.4);border-bottom-right-radius:4px}
 .fx-msg.fx-assistant{background:var(--fx-panel);border:1px solid var(--fx-line);border-bottom-left-radius:4px}

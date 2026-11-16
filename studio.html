@@ -725,7 +725,7 @@ $("#suggest").addEventListener("click", () => {
 $("#fill").addEventListener("click", () => {
   const a = {...S.amounts}, r = D.complete(a, S.ptype, null);
   if (!r.added.length && !r.removed.length) return toast("Nothing is missing: the bottle already has every part of a basic emulsion.");
-  replaceWith(a, null, [r.added.length ? `Added ${D.names(r.added)}.` : "", r.removed.length ? `Removed ${D.names(r.removed)}.` : ""].join(" ").trim());
+  replaceWith(a, null, [r.added.length ? `Added ${D.names(r.added)}.` : "", r.removed.length ? `Removed ${D.names(r.removed)}.` : ""].filter(Boolean).join(" "));
 });
 $("#clear").addEventListener("click", () => replaceWith({}, null, "Bottle emptied. Press Undo to bring it back."));
 $("#undo").addEventListener("click", () => { if (!undo) return; const back = undo; undo = JSON.stringify(S); S = JSON.parse(back); hot = null; rebuild(); toast("Undone"); });
