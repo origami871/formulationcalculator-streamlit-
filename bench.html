@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Formulation workbench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* The workbench of the Formulation page: the ingredient library, and formulas A and B side by side.
+   page_formulation.py shows this file inside the page. Fonts work as in studio.html. */
+@font-face{font-family:"PP Editorial New";font-weight:400;font-style:normal;font-display:swap;
+  src:local("PP Editorial New"),local("PPEditorialNew-Regular"),url("fonts/PPEditorialNew-Regular.woff2") format("woff2"),url("fonts/PPEditorialNew-Regular.otf") format("opentype")}
+@font-face{font-family:"PP Editorial New";font-weight:400;font-style:italic;font-display:swap;
+  src:local("PP Editorial New Italic"),local("PPEditorialNew-Italic"),url("fonts/PPEditorialNew-Italic.woff2") format("woff2"),url("fonts/PPEditorialNew-Italic.otf") format("opentype")}
+@font-face{font-family:"PP Neue Montreal";font-weight:400;font-style:normal;font-display:swap;
+  src:local("PP Neue Montreal Book"),local("PPNeueMontreal-Book"),local("PP Neue Montreal"),url("fonts/PPNeueMontreal-Book.woff2") format("woff2"),url("fonts/PPNeueMontreal-Book.otf") format("opentype")}
+@font-face{font-family:"PP Neue Montreal";font-weight:500;font-style:normal;font-display:swap;
+  src:local("PP Neue Montreal Medium"),local("PPNeueMontreal-Medium"),url("fonts/PPNeueMontreal-Medium.woff2") format("woff2"),url("fonts/PPNeueMontreal-Medium.otf") format("opentype")}
+/*__FONTS__*/
+
+:root{
+  --ink:#02070A; --blue:#0297DE; --orange:#FC734D; --paper:#EAF4FA;
+  --muted:rgba(234,244,250,.62); --faint:rgba(234,244,250,.38); --line:rgba(234,244,250,.14);
+  --panel:rgba(234,244,250,.045);
+  --serif:"PP Editorial New","Instrument Serif",Georgia,serif;
+  --sans:"PP Neue Montreal","Neue Montreal","Inter Tight",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html.framed,html.framed body{overflow:hidden}
+body{margin:0;background:transparent;color:var(--paper);font-family:var(--sans);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+html:not(.framed) body{background:var(--ink);padding:24px}
+button,input{font:inherit;color:inherit}
+h2{font-family:var(--serif);font-weight:400;margin:10px 0 0;letter-spacing:-.01em;line-height:1;font-size:clamp(32px,3.6vw,52px)}
+em{font-style:italic;color:var(--orange)}
+.eyebrow{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+.eyebrow b{color:var(--orange);font-weight:500}
+.hint{color:var(--faint);font-size:13px;margin:12px 0 0}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.sw{width:10px;height:10px;border-radius:50%;flex:none;display:inline-block}
+
+/* ---------- ingredient library ---------- */
+.lib{border:1px solid var(--line);border-radius:20px;background:var(--panel);padding:22px 24px;margin-bottom:28px}
+.libhead{display:flex;gap:18px 28px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;margin-bottom:16px}
+.find{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:999px;padding:9px 16px;background:var(--panel);color:var(--faint);
+  font-size:13px;flex:1;min-width:240px;max-width:420px;transition:border-color .2s}
+.find:focus-within{border-color:var(--blue)}
+.find svg{flex:none;width:15px;height:15px}
+.find input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--paper);font-size:15px}
+.find input::placeholder{color:var(--faint)}
+.find input::-webkit-search-cancel-button{filter:invert(1);opacity:.5;cursor:pointer}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.pills button{border:1px solid var(--line);background:none;border-radius:999px;padding:5px 12px;font-size:13px;color:var(--muted);cursor:pointer;transition:border-color .2s,color .2s}
+.pills button:hover{border-color:var(--paper);color:var(--paper)}
+.pills button[aria-pressed=true]{background:var(--paper);border-color:var(--paper);color:var(--ink)}
+/* one flowing list: each job's label sits in the line, just before its ingredients */
+#groups{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.group{display:contents}
+.lead{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.group h4{font-family:var(--sans);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--orange);font-weight:400;margin:0 2px 0 10px}
+.group:first-child h4{margin-left:0}
+.chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;padding:4px 4px 4px 12px;background:var(--panel);white-space:nowrap;
+  cursor:grab;user-select:none;touch-action:none;font-size:14px;transition:border-color .2s,transform .2s,background .2s}
+.chip:hover{border-color:var(--blue);transform:translateY(-2px);background:rgba(2,151,222,.08)}
+.chip small{color:var(--faint);font-size:12px}
+.chip .ab{display:inline-flex;gap:3px;margin-left:2px}
+.chip .ab button{width:26px;height:26px;border-radius:50%;border:1px solid var(--line);background:none;cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);padding:0;transition:all .15s}
+.chip .ab button:hover{border-color:var(--paper);color:var(--paper)}
+.chip .ab button[data-slot=A][aria-pressed=true]{background:var(--blue);border-color:var(--blue);color:var(--ink)}
+.chip .ab button[data-slot=B][aria-pressed=true]{background:var(--orange);border-color:var(--orange);color:var(--ink)}
+.chip.ghost{position:fixed;left:0;top:0;z-index:50;pointer-events:none;margin:0;padding:8px 14px 8px 12px;background:var(--ink);border-color:var(--blue);
+  box-shadow:0 12px 40px rgba(2,151,222,.4);cursor:grabbing;transition:none}
+body.over .chip.ghost{border-color:var(--orange);box-shadow:0 12px 40px rgba(252,115,77,.5)}
+body.out .chip.ghost{border-color:var(--orange);opacity:.7;text-decoration:line-through}
+body.dragging{cursor:grabbing;user-select:none}
+
+/* ---------- formulas A and B ---------- */
+.sechead{margin:0 0 14px 4px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.fcard{border:1px solid var(--line);border-radius:20px;background:var(--panel);padding:20px 22px;min-width:0;transition:border-color .2s,background .2s,box-shadow .2s}
+body.dragging .fcard{border-style:dashed;border-color:rgba(2,151,222,.7)}
+body.dragging .fcard.over{border-style:solid;border-color:var(--orange);background:rgba(252,115,77,.07);box-shadow:0 0 0 4px rgba(252,115,77,.12)}
+.fhead{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.tag{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:600;color:var(--ink);background:var(--blue)}
+.tag.B{background:var(--orange)}
+.fname{flex:1;min-width:0;background:none;border:0;border-bottom:1px solid transparent;font-family:var(--serif);font-size:30px;line-height:1.1;padding:2px 0;outline:0;text-overflow:ellipsis}
+.fname:hover{border-bottom-color:var(--line)}
+.fname:focus{border-bottom-color:var(--blue)}
+.tot{flex:none;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px}
+.seg button{border:0;background:none;padding:6px 13px;border-radius:999px;cursor:pointer;color:var(--muted);font-size:14px}
+.seg button[aria-pressed=true]{background:var(--paper);color:var(--ink)}
+.ph{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:14px;color:var(--muted)}
+.ph input{width:44px;background:none;border:0;color:var(--paper);text-align:center;font-variant-numeric:tabular-nums;-moz-appearance:textfield;outline:0}
+.ph input::-webkit-outer-spin-button,.ph input::-webkit-inner-spin-button{-webkit-appearance:none}
+.ph:focus-within{border-color:var(--blue)}
+.phwin{font-size:13px;color:var(--faint)}
+.btn{border:1px solid var(--line);background:none;border-radius:999px;padding:8px 15px;cursor:pointer;font-size:14px;transition:border-color .2s,background .2s}
+.btn:hover{border-color:var(--paper)}
+.btn.pri{background:var(--blue);border-color:var(--blue);color:var(--ink);font-weight:500}
+.btn.pri:hover{background:#28b0f2}
+.fcard[data-slot=B] .btn.pri{background:var(--orange);border-color:var(--orange)}
+.fcard[data-slot=B] .btn.pri:hover{background:#ff8c6b}
+.btn:disabled{opacity:.4;cursor:default}
+.fbody{display:grid;grid-template-columns:118px minmax(0,1fr);gap:18px;align-items:start;margin-top:18px}
+.bottle{width:118px;display:block;overflow:visible;position:sticky;top:8px;filter:drop-shadow(0 18px 36px rgba(2,151,222,.2))}
+.bottle .layer{cursor:grab;transition:opacity .2s,filter .2s}
+.bottle .layer:hover{filter:brightness(1.15)}
+.bottle .layer.dim{opacity:.18}
+.zone{border-top:1px solid var(--line);padding:2px 0 6px}
+.zone:first-child{border-top:0}
+.zone>header{display:flex;justify-content:space-between;align-items:baseline;padding:8px 0 4px;font-family:var(--serif);font-size:21px}
+.zone>header span{font-family:var(--sans);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.zone[data-z=cool]>header{color:var(--orange)}
+.row{display:grid;grid-template-columns:10px minmax(0,1.4fr) minmax(56px,1fr) 70px 20px;gap:8px;align-items:center;padding:7px 0;border-radius:8px;transition:background .3s}
+.row.flash{background:rgba(2,151,222,.16)}
+.row .nm{min-width:0;cursor:grab;touch-action:none}
+.row[data-id=aqua] .nm{cursor:default}
+.row .nm b{font-weight:500;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .nm small{color:var(--faint);font-size:12px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .num{display:flex;align-items:center;gap:3px;border:1px solid var(--line);border-radius:8px;padding:3px 7px;color:var(--faint)}
+.row .num input{width:100%;min-width:0;background:none;border:0;text-align:right;color:var(--paper);font-variant-numeric:tabular-nums;-moz-appearance:textfield;outline:0}
+.row .num input::-webkit-outer-spin-button,.row .num input::-webkit-inner-spin-button{-webkit-appearance:none}
+.row .num:focus-within{border-color:var(--blue)}
+.row.off .num{border-color:var(--orange)}
+.row .rm{border:0;background:none;color:var(--faint);cursor:pointer;font-size:20px;line-height:1;border-radius:6px;padding:2px}
+.row .rm:hover{color:var(--orange)}
+.row .qs{grid-column:3/6;color:var(--muted);font-size:14px;text-align:right;font-variant-numeric:tabular-nums}
+.row .qs b{color:var(--paper);font-weight:500;font-size:16px}
+.zone .none{color:var(--faint);font-size:13px;padding:4px 0 8px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:22px;background:none;cursor:pointer;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:3px;border-radius:2px;
+  background:linear-gradient(to right,var(--line) 0 var(--a),rgba(2,151,222,.6) var(--a) var(--b),var(--line) var(--b) 100%)}
+input[type=range]::-moz-range-track{height:3px;border-radius:2px;
+  background:linear-gradient(to right,var(--line) 0 var(--a),rgba(2,151,222,.6) var(--a) var(--b),var(--line) var(--b) 100%)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--paper);margin-top:-6px;
+  border:0;box-shadow:0 0 0 4px rgba(2,151,222,.25);transition:box-shadow .2s}
+input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:var(--paper);border:0;box-shadow:0 0 0 4px rgba(2,151,222,.25)}
+input[type=range]:hover::-webkit-slider-thumb,input[type=range]:active::-webkit-slider-thumb{box-shadow:0 0 0 7px rgba(2,151,222,.35)}
+
+/* ---------- stability, inside each card ---------- */
+.stab{display:flex;gap:16px;align-items:center;border-top:1px solid var(--line);margin-top:16px;padding-top:16px}
+.ring{position:relative;width:76px;height:76px;flex:none}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:6}
+.ring .t{stroke:var(--line)}
+.ring .v{stroke:var(--blue);stroke-linecap:round;transition:stroke-dashoffset .6s cubic-bezier(.2,.7,.2,1),stroke .3s}
+.ring b{position:absolute;inset:0;display:grid;place-content:center;font-family:var(--serif);font-size:30px;font-weight:400}
+.stab h3{font-family:var(--serif);font-weight:400;font-size:24px;line-height:1.1;margin:0}
+.stab p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.chk{list-style:none;margin:10px 0 0;padding:0}
+.chk li{padding:8px 0 8px 20px;border-bottom:1px solid var(--line);position:relative;font-size:14px;color:var(--muted)}
+.chk li b{color:var(--paper);font-weight:500;display:block}
+.chk li::before{content:"";position:absolute;left:0;top:14px;width:8px;height:8px;border-radius:50%;background:var(--blue)}
+.chk li.high::before{background:var(--orange)}
+.chk li.warn::before{background:none;border:1.5px solid var(--orange)}
+.chk li.info::before{background:none;border:1.5px solid var(--faint)}
+details.ok summary{cursor:pointer;color:var(--faint);font-size:14px;padding:10px 0 0}
+
+#tip{position:fixed;z-index:60;pointer-events:none;background:rgba(2,7,10,.94);border:1px solid var(--line);border-radius:12px;padding:10px 14px;
+  max-width:270px;font-size:13px;color:var(--muted);opacity:0;transition:opacity .15s}
+#tip.on{opacity:1}
+#tip b{display:block;color:var(--paper);font-family:var(--serif);font-size:20px;font-weight:400;line-height:1.15}
+#tip u{text-decoration:none;color:var(--orange)}
+#toast{position:fixed;left:0;top:0;z-index:70;background:var(--paper);color:var(--ink);padding:9px 16px;border-radius:999px;
+  font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;max-width:min(440px,90vw);text-align:center}
+#toast.on{opacity:1}
+
+@media (max-width:860px){
+  .grid{grid-template-columns:1fr}
+}
+@media (max-width:520px){
+  .lib,.fcard{padding:16px}
+  .fbody{grid-template-columns:1fr}
+  .bottle{display:none}
+  .row{grid-template-columns:10px minmax(0,1fr) 78px 22px}
+  .row input[type=range]{grid-column:1/5;grid-row:2}
+  .row .qs{grid-column:3/5}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <section class="lib">
+    <div class="libhead">
+      <div><div class="eyebrow"><b>01</b> &nbsp;Ingredient library</div><h2>Choose <em>ingredients</em></h2></div>
+      <label class="find"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="7" cy="7" r="5"/><path d="M11 11l4 4" stroke-linecap="round"/></svg>
+        <input id="q" type="search" placeholder="Search by name or what it does" aria-label="Search ingredients"><span id="count"></span></label>
+    </div>
+    <div class="pills" id="roles" role="group" aria-label="Show ingredients that work as"></div>
+    <div id="groups"></div>
+    <p class="hint">Drag an ingredient onto formula A or B, or press A or B on it. Press again to take it out. An ingredient with two jobs is listed under its main job, and the filters above find it under both.</p>
+  </section>
+
+  <div class="eyebrow sechead"><b>02</b> &nbsp;Build and compare</div>
+  <div class="grid" id="grid"></div>
+</div>
+<div id="tip"></div>
+<div id="toast" role="status"></div>
+
+<script>window.__DATA__ = /*__DATA__*/null;</script>
+<script src="fx_shared.js"></script>
+<script>
+(async function () {
+"use strict";
+const {$, $$, esc, clamp, fmt} = FX;
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// The link to Streamlit (page_formulation.py). The page starts from formulas A and B as Python holds them,
+// and sends them back a moment after every change, so the sections below it stay up to date.
+const bridge = FX.bridge("bench-inbox", "fx-bench-outbox");
+const D = FX.prepare(await FX.loadData());
+const {INGS, ING, ZONES, ROLES} = D;
+const SLOTS = ["A", "B"], other = s => s === "A" ? "B" : "A";
+if (bridge.framed()) document.documentElement.classList.add("framed");
+
+const blank = s => ({name: `Formula ${s}`, ptype: "Leave-on", ph: [5, 6], amounts: {}});
+const F = {A: blank("A"), B: blank("B")}, undo = {A: null, B: null};
+function adopt(src) {
+  for (const s of SLOTS) {
+    const f = src && src[s];
+    if (!f) continue;
+    const ph = Array.isArray(f.ph) && f.ph.length === 2 ? f.ph.map(Number) : [5, 6];
+    F[s] = {name: String(f.name || `Formula ${s}`), ptype: f.ptype === "Rinse-off" ? "Rinse-off" : "Leave-on",
+      ph: ph.every(n => n >= 3 && n <= 9) ? [Math.min(...ph), Math.max(...ph)] : [5, 6],
+      amounts: Object.fromEntries(Object.entries(f.amounts || {}).filter(([k]) => ING[k] && k !== "aqua").map(([k, v]) => [k, Number(v) || 0]))};
+  }
+}
+const saved = await bridge.ready();
+if (saved && saved.formulas) adopt(saved.formulas);
+else if (!bridge.framed()) { D.suggest(F.A.amounts, "Leave-on", F.A.ph); F.A.name = "Example"; }   // opened on its own: show something
+
+let live = false, syncT = null;
+function sync() { if (!live) return; clearTimeout(syncT); syncT = setTimeout(() => bridge.emit("formulas", {formulas: F}), 300); }
+
+const card = s => $(`.fcard[data-slot="${s}"]`);
+const sw = i => `<span class="sw" style="background:${i.color}"></span>`;
+const stepFor = i => i.max != null && i.max < 0.01 ? 0.0001 : i.max != null && i.max <= 1 ? 0.05 : 0.1;
+const sliderMax = i => i.max == null ? 10 : i.max < 0.01 ? i.max * 2 : i.max <= 1 ? i.max * 2 : Math.ceil(i.max * 1.5);
+
+// ============================================================
+// 01 THE LIBRARY: search, filter by job, and chips you can drag or switch on for A and B
+// ============================================================
+let q = "", role = "";
+function buildLib() {
+  $("#roles").innerHTML = ["", ...ROLES].map(r => `<button type="button" data-role="${esc(r)}" aria-pressed="${r === role}">${r ? esc(r) : "All"}</button>`).join("");
+  $$("#roles button").forEach(b => b.addEventListener("click", () => { role = b.dataset.role; buildLib(); }));
+  const text = q.trim().toLowerCase(), all = INGS.filter(i => i.id !== "aqua");
+  const list = all.filter(i => (!role || i.roles.includes(role)) && (!text || [i.short, i.inci, i.func, i.cat, ...i.roles].join(" ").toLowerCase().includes(text)));
+  const groups = role ? [[role, list]] : ROLES.map(r => [r, list.filter(i => i.roles[0] === r)]);
+  const chip = (i, r) => { const also = i.roles.filter(x => x !== r);
+    return `<div class="chip" data-id="${i.id}">${sw(i)}<span>${esc(i.short)}</span>${also.length ? `<small>+ ${esc(also.join(", ").toLowerCase())}</small>` : ""}<span class="ab">${
+      SLOTS.map(s => `<button type="button" data-slot="${s}" aria-pressed="false" aria-label="${esc(i.short)} in formula ${s}">${s}</button>`).join("")}</span></div>`; };
+  $("#groups").innerHTML = groups.filter(g => g[1].length).map(([r, xs]) => `<div class="group"><span class="lead"><h4>${esc(r)}</h4>${chip(xs[0], r)}</span>${xs.slice(1).map(i => chip(i, r)).join("")}</div>`).join("")
+    || `<p class="hint" style="margin:0">No ingredient matches “${esc(q)}”.</p>`;
+  $("#count").textContent = list.length === all.length ? `${all.length}` : `${list.length} of ${all.length}`;
+  $$("#groups .chip").forEach(c => {
+    const id = c.dataset.id;
+    c.addEventListener("pointerdown", e => { if (!e.target.closest("button")) drag(e, id, null); });
+    $$(".ab button", c).forEach(b => b.addEventListener("click", () => { const s = b.dataset.slot; if (F[s].amounts[id] == null) add(s, id); else remove(s, id); }));
+    tipOn(c, id, null);
+  });
+  markLib(); fit();
+}
+function markLib() { $$("#groups .chip").forEach(c => $$(".ab button", c).forEach(b => b.setAttribute("aria-pressed", F[b.dataset.slot].amounts[c.dataset.id] != null))); }
+$("#q").addEventListener("input", e => { q = e.target.value; buildLib(); });
+
+// ============================================================
+// 02 FORMULAS A AND B
+// ============================================================
+const BODY = "M70,150 Q70,128 96,124 L204,124 Q230,128 230,150 L230,500 Q230,530 200,530 L100,530 Q70,530 70,500 Z";
+const cardHTML = s => `<article class="fcard" data-slot="${s}">
+  <header class="fhead"><span class="tag ${s}">${s}</span><input class="fname" maxlength="60" aria-label="Name of formula ${s}" spellcheck="false"><span class="tot" data-tot></span></header>
+  <div class="ctl">
+    <div class="seg" role="group" aria-label="Product type"><button type="button" data-pt="Leave-on">Leave-on</button><button type="button" data-pt="Rinse-off">Rinse-off</button></div>
+    <label class="ph">Target pH <input data-ph="0" type="number" min="3" max="9" step="0.1" aria-label="Lowest target pH"> to <input data-ph="1" type="number" min="3" max="9" step="0.1" aria-label="Highest target pH"></label>
+    <span class="phwin" data-phwin></span>
+  </div>
+  <div class="ctl">
+    <button class="btn pri" type="button" data-act="suggest">Suggest starting formula</button>
+    <button class="btn" type="button" data-act="copy">Copy from ${other(s)}</button>
+    <button class="btn" type="button" data-act="clear">Clear</button>
+    <button class="btn" type="button" data-act="undo" disabled>Undo</button>
+  </div>
+  <div class="fbody">
+    <svg class="bottle" viewBox="40 20 220 520" role="img" aria-label="Formula ${s} as a bottle: oil phase on top, water phase in the middle, cool-down additions at the bottom">
+      <defs>
+        <clipPath id="clip${s}"><path d="${BODY}"/></clipPath>
+        <linearGradient id="steel${s}" x1="0" x2="1"><stop offset="0" stop-color="#0d1c26"/><stop offset=".45" stop-color="#2b4658"/><stop offset="1" stop-color="#0a151c"/></linearGradient>
+        <linearGradient id="shine${s}" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+      </defs>
+      <rect x="62" y="34" width="62" height="10" rx="5" fill="url(#steel${s})"/><rect x="114" y="28" width="72" height="24" rx="9" fill="url(#steel${s})"/>
+      <rect x="143" y="50" width="14" height="38" fill="#1b2f3c"/><rect x="110" y="84" width="80" height="18" rx="5" fill="url(#steel${s})"/><rect x="120" y="100" width="60" height="26" fill="#12232e"/>
+      <path d="${BODY}" fill="rgba(234,244,250,.05)"/>
+      <g clip-path="url(#clip${s})"><g data-layers></g><g data-seams></g>
+        <rect x="80" y="124" width="16" height="406" fill="url(#shine${s})" opacity=".7" pointer-events="none"/><rect x="212" y="124" width="6" height="406" fill="#fff" opacity=".07" pointer-events="none"/></g>
+      <path d="${BODY}" fill="none" stroke="rgba(234,244,250,.42)" stroke-width="1.5"/>
+    </svg>
+    <div data-zones></div>
+  </div>
+  <div class="stab">
+    <div class="ring"><svg viewBox="0 0 100 100"><circle class="t" cx="50" cy="50" r="44"/><circle class="v" data-ring cx="50" cy="50" r="44" stroke-dasharray="276.5" stroke-dashoffset="276.5"/></svg><b data-score>–</b></div>
+    <div><h3 data-scorel>Stability</h3><p>Theory-based score out of 100. A serious risk costs 20 points, a caution 7.</p></div>
+  </div>
+  <ul class="chk" data-checks></ul>
+  <details class="ok"><summary data-oksum></summary><ul class="chk" data-ok></ul></details>
+</article>`;
+
+function setInputs(s) {
+  const c = card(s);
+  $(".fname", c).value = F[s].name;
+  $$("[data-ph]", c).forEach(el => { el.value = fmt(F[s].ph[el.dataset.ph]); });
+}
+function wireCard(s) {
+  const c = card(s), name = $(".fname", c);
+  name.addEventListener("input", () => { F[s].name = name.value; sync(); });
+  name.addEventListener("blur", () => { if (!name.value.trim()) { F[s].name = name.value = `Formula ${s}`; sync(); } });
+  $$("[data-pt]", c).forEach(b => b.addEventListener("click", () => { F[s].ptype = b.dataset.pt; refresh(s); }));
+  $$("[data-ph]", c).forEach(el => el.addEventListener("change", () => {
+    const v = $$("[data-ph]", c).map(x => clamp(Math.round((Number(x.value) || 5.5) * 10) / 10, 3, 9));
+    F[s].ph = [Math.min(...v), Math.max(...v)]; setInputs(s); refresh(s);
+  }));
+  $$("[data-act]", c).forEach(b => b.addEventListener("click", () => act(s, b.dataset.act)));
+  // a layer in the bottle shows what it is, and can be pulled out to remove it or across to the other formula
+  const g = $("[data-layers]", c);
+  g.addEventListener("pointerdown", e => { const id = e.target.dataset && e.target.dataset.id; if (id && id !== "aqua") drag(e, id, s, e.target); });
+  g.addEventListener("pointermove", e => { const id = e.target.dataset && e.target.dataset.id; if (id && !document.body.classList.contains("dragging")) { showTip(id, e, s); dim(s, id); } });
+  g.addEventListener("pointerleave", () => { hideTip(); dim(s, null); });
+}
+function act(s, what) {
+  const before = JSON.stringify(F[s]), o = other(s);
+  let msg = "Undone";
+  if (what === "undo") { if (!undo[s]) return; const back = undo[s]; undo[s] = before; F[s] = JSON.parse(back); }
+  else {
+    if (what === "suggest") {
+      const r = D.suggest(F[s].amounts, F[s].ptype, F[s].ph);
+      msg = [r.added.length ? `Added ${D.names(r.added)}.` : "", r.removed.length ? `Removed ${D.names(r.removed)}.` : "", "Levels set to theory-based starting points."].join(" ").trim();
+    } else if (what === "copy") { F[s] = JSON.parse(JSON.stringify(F[o])); F[s].name = `${F[o].name} (copy)`.slice(0, 60); msg = `Formula ${s} is now a copy of formula ${o}`; }
+    else if (what === "clear") { F[s].amounts = {}; msg = `Formula ${s} cleared. Press Undo to bring it back.`; }
+    undo[s] = before;
+  }
+  setInputs(s); rebuild(s); say(msg);
+}
+function buildRows(s) {
+  const c = card(s), it = D.itemsOf(F[s].amounts);
+  $("[data-zones]", c).innerHTML = Object.entries(ZONES).map(([z, label]) => {
+    const rows = it.filter(i => i.zone === z).map(i => {
+      if (i.id === "aqua") return `<div class="row" data-id="aqua">${sw(i)}<div class="nm"><b>Water</b><small>Fills the formula to 100%</small></div><div class="qs">q.s. <b data-wq></b></div></div>`;
+      const mxs = sliderMax(i), a = i.min == null ? 0 : i.min / mxs * 100, b = i.max == null ? 0 : i.max / mxs * 100;
+      return `<div class="row" data-id="${i.id}">${sw(i)}<div class="nm" title="Drag to formula ${other(s)} to copy it there"><b>${esc(i.short)}</b><small>usual ${fmt(i.min)}–${fmt(i.max)}%${i.qs ? " q.s." : ""}</small></div>
+        <input type="range" min="0" max="${mxs}" step="${stepFor(i)}" value="${i.pct}" style="--a:${a}%;--b:${b}%" aria-label="${esc(i.short)} amount in formula ${s}">
+        <label class="num"><input type="number" min="0" max="100" step="${stepFor(i)}" value="${fmt(i.pct)}" aria-label="${esc(i.short)} percent in formula ${s}">%</label>
+        <button class="rm" type="button" aria-label="Remove ${esc(i.short)} from formula ${s}">×</button></div>`;
+    }).join("");
+    return `<div class="zone" data-z="${z}"><header>${label}<span data-zt="${z}"></span></header>${rows || `<div class="none">Nothing here yet. Drag an ingredient onto this card.</div>`}</div>`;
+  }).join("");
+  $$(".row", c).forEach(r => {
+    const id = r.dataset.id;
+    r.addEventListener("pointerenter", () => dim(s, id)); r.addEventListener("pointerleave", () => dim(s, null));
+    if (id === "aqua") return;
+    const range = $("input[type=range]", r), numEl = $("input[type=number]", r);
+    const set = (v, from) => {
+      v = clamp(Number(v) || 0, 0, 100); F[s].amounts[id] = Math.round(v * 1e4) / 1e4;
+      if (from !== range) range.value = v; if (from !== numEl) numEl.value = fmt(v);
+      refresh(s);
+    };
+    range.addEventListener("input", () => set(range.value, range));
+    numEl.addEventListener("input", () => set(numEl.value, numEl));
+    $(".rm", r).addEventListener("click", () => remove(s, id));
+    $(".nm", r).addEventListener("pointerdown", e => drag(e, id, s));
+  });
+}
+function refresh(s) {
+  const c = card(s), f = F[s], it = D.itemsOf(f.amounts), w = it[0].pct;
+  for (const z of Object.keys(ZONES)) $(`[data-zt="${z}"]`, c).textContent = fmt(it.filter(i => i.zone === z).reduce((t, i) => t + Math.max(0, i.pct), 0)) + "%";
+  $("[data-wq]", c).textContent = fmt(w) + "%";
+  const tot = $("[data-tot]", c); tot.textContent = w < 0 ? `${fmt(100 - w)}%, over 100` : `${it.length - 1} ingredient${it.length === 2 ? "" : "s"} + water`; tot.style.color = w < 0 ? "var(--orange)" : "";
+  $$(".row", c).forEach(r => { const i = ING[r.dataset.id], p = f.amounts[i.id]; r.classList.toggle("off", p != null && !i.qs && i.min != null && (p > i.max || p < i.min)); });
+  const win = D.phWindow(it);
+  $("[data-phwin]", c).textContent = !win ? "" : win[0] <= win[1] ? `Ingredients work at pH ${fmt(win[0])}–${fmt(win[1])}` : "No pH suits every ingredient";
+  // stability: the same theory as the Studio. Country rules are checked in the Compliance section further down the page.
+  const {checks, score} = D.analyse(it, f.ptype, f.ph, {rules: false}), rank = {high: 0, warn: 1, info: 2};
+  const bad = checks.filter(k => k.l !== "ok").sort((a, b) => rank[a.l] - rank[b.l]), ok = checks.filter(k => k.l === "ok");
+  const li = k => `<li class="${k.l}"><b>${esc(k.t)}</b>${esc(k.d)}</li>`;
+  $("[data-checks]", c).innerHTML = bad.map(li).join("") || `<li><b>No risks flagged</b>Every theory check passes.</li>`;
+  $("[data-ok]", c).innerHTML = ok.map(li).join(""); $("[data-oksum]", c).textContent = `Passed checks (${ok.length})`; $("details.ok", c).hidden = !ok.length;
+  $("[data-score]", c).textContent = score == null ? "–" : score;
+  $("[data-scorel]", c).textContent = score == null ? "Stability" : score >= 80 ? "Low predicted risk" : score >= 55 ? "Moderate risk" : "High risk";
+  const rv = $("[data-ring]", c); rv.style.strokeDashoffset = 276.5 * (1 - (score || 0) / 100);
+  rv.style.stroke = score >= 80 ? "var(--blue)" : score >= 55 ? "#FFB199" : "var(--orange)";
+  $$("[data-pt]", c).forEach(b => b.setAttribute("aria-pressed", b.dataset.pt === f.ptype));
+  $('[data-act="clear"]', c).disabled = it.length === 1; $('[data-act="undo"]', c).disabled = !undo[s];
+  layout(s); markLib(); sync(); fit();
+}
+function rebuild(s) { buildRows(s); refresh(s); }
+function flash(s, id) { const r = $(`.row[data-id="${id}"]`, card(s)); if (r) { r.classList.add("flash"); setTimeout(() => r.classList.remove("flash"), 900); } }
+function add(s, id, pct) {
+  if (F[s].amounts[id] != null) return say(`${ING[id].short} is already in formula ${s}`);
+  undo[s] = JSON.stringify(F[s]);
+  F[s].amounts[id] = pct ?? ING[id].typ ?? 1; rebuild(s); flash(s, id);
+  say(`${ING[id].short} added to the ${ZONES[ING[id].zone].toLowerCase()} of formula ${s}`);
+}
+function remove(s, id) {
+  if (id === "aqua" || F[s].amounts[id] == null) return;
+  undo[s] = JSON.stringify(F[s]);
+  delete F[s].amounts[id]; rebuild(s); say(`${ING[id].short} removed from formula ${s}`);
+}
+
+// ============================================================
+// THE BOTTLES: layers ease toward their target, then the animation rests
+// ============================================================
+const NS = "http://www.w3.org/2000/svg", TOP = 150, BOT = 530, H = BOT - TOP, MINH = 6;
+const L = {A: {}, B: {}};      // slot -> ingredient id -> {el, y, h, ty, th, zone, dead}
+let running = false, last = 0;
+function layout(s) {
+  const it = D.itemsOf(F[s].amounts), zone = k => it.filter(i => i.zone === k && i.pct > 0);
+  const ord = [...zone("oil"), ...zone("water"), ...zone("cool")], total = ord.reduce((t, i) => t + i.pct, 0) || 1;
+  const thin = ord.filter(i => i.pct / total * H < MINH), rest = ord.filter(i => !thin.includes(i));
+  const restT = rest.reduce((t, i) => t + i.pct, 0) || 1, free = H - MINH * thin.length, g = $("[data-layers]", card(s));
+  let y = TOP; const seen = new Set();
+  ord.forEach(i => {
+    const h = thin.includes(i) ? MINH : free * i.pct / restT;
+    let l = L[s][i.id];
+    if (!l) {
+      const el = document.createElementNS(NS, "rect");
+      el.setAttribute("x", 60); el.setAttribute("width", 180); el.setAttribute("class", "layer"); el.setAttribute("fill", i.color); el.dataset.id = i.id;
+      g.appendChild(el);
+      l = L[s][i.id] = {el, y, h: 0};
+    }
+    l.ty = y; l.th = h; l.dead = false; l.zone = i.zone; seen.add(i.id); y += h;
+  });
+  Object.entries(L[s]).forEach(([id, l]) => { if (!seen.has(id)) { l.dead = true; l.th = 0; } });
+  if (!running) { running = true; last = performance.now(); requestAnimationFrame(step); }
+}
+function step(now) {
+  const dt = Math.min(.5, (now - last) / 1000) * 60, k = reduced ? 1 : 1 - Math.pow(1 - .16, dt);
+  last = now; let moving = false;
+  for (const s of SLOTS) {
+    const zb = {};
+    for (const [id, l] of Object.entries(L[s])) {
+      l.y += (l.ty - l.y) * k; l.h += (l.th - l.h) * k;
+      if (Math.abs(l.ty - l.y) > .15 || Math.abs(l.th - l.h) > .15) moving = true; else { l.y = l.ty; l.h = l.th; }
+      if (l.dead && l.h < .4) { l.el.remove(); delete L[s][id]; continue; }
+      l.el.setAttribute("y", l.y.toFixed(2)); l.el.setAttribute("height", Math.max(0, l.h + .6).toFixed(2));
+      if (!l.dead) { const b = zb[l.zone] = zb[l.zone] || [1e9, -1e9]; b[0] = Math.min(b[0], l.y); b[1] = Math.max(b[1], l.y + l.h); }
+    }
+    let seams = "";
+    for (const z of ["water", "cool"]) if (zb[z] && zb[z][0] > TOP + 1) seams += `<line x1="60" x2="240" y1="${zb[z][0].toFixed(1)}" y2="${zb[z][0].toFixed(1)}" stroke="#02070A" stroke-opacity=".55" stroke-width="2" pointer-events="none"/>`;
+    $("[data-seams]", card(s)).innerHTML = seams;
+  }
+  if (moving) requestAnimationFrame(step); else running = false;
+}
+function dim(s, id) { $$(".layer", card(s)).forEach(el => el.classList.toggle("dim", id != null && el.dataset.id !== id)); }
+
+// ============================================================
+// DRAG AND DROP (pointer events, so it works with mouse, pen and touch)
+// from = null: a chip from the library. from = "A" or "B": an ingredient already in that formula.
+// Dropped on a formula it is added there (with its amount, when it came from the other formula).
+// An ingredient pulled out of its own formula and dropped outside both is removed.
+// ============================================================
+let px = 0, py = 0;
+addEventListener("pointermove", e => { px = e.clientX; py = e.clientY; }, {passive: true});
+addEventListener("pointerdown", e => { px = e.clientX; py = e.clientY; }, {passive: true});
+function slotAt(e) { const el = document.elementFromPoint(e.clientX, e.clientY), c = el && el.closest(".fcard"); return c ? c.dataset.slot : null; }
+// while dragging near the top or bottom of the screen, scroll the Streamlit page, so a card further down can be reached
+function scrollHost(e) {
+  try {
+    if (!window.frameElement) return;
+    const w = window.parent, y = frameElement.getBoundingClientRect().top + e.clientY;
+    let el = frameElement.parentElement;
+    while (el && !(/(auto|scroll)/.test(w.getComputedStyle(el).overflowY) && el.scrollHeight > el.clientHeight + 4)) el = el.parentElement;
+    el = el || w.document.scrollingElement;
+    if (y > w.innerHeight - 70) el.scrollBy(0, 18); else if (y < 120) el.scrollBy(0, -18);
+  } catch (err) {}
+}
+function drag(e, id, from, source) {
+  if (e.button > 0) return;
+  const src = source || e.currentTarget, sx = e.clientX, sy = e.clientY, i = ING[id]; let ghost = null;
+  try { src.setPointerCapture(e.pointerId); } catch (err) {}
+  const move = ev => {
+    if (!ghost && Math.hypot(ev.clientX - sx, ev.clientY - sy) > 6) {
+      ghost = document.createElement("div"); ghost.className = "chip ghost"; ghost.innerHTML = sw(i) + esc(i.short);
+      document.body.appendChild(ghost); document.body.classList.add("dragging"); hideTip();
+    }
+    if (!ghost) return;
+    ghost.style.transform = `translate(${ev.clientX + 14}px,${ev.clientY - 18}px)`;
+    const over = slotAt(ev);
+    SLOTS.forEach(s => card(s).classList.toggle("over", s === over && s !== from));
+    document.body.classList.toggle("over", !!over && over !== from); document.body.classList.toggle("out", !!from && !over);
+    scrollHost(ev);
+  };
+  const up = ev => {
+    src.removeEventListener("pointermove", move); src.removeEventListener("pointerup", up); src.removeEventListener("pointercancel", up);
+    const moved = !!ghost, over = slotAt(ev);
+    if (ghost) ghost.remove(); document.body.classList.remove("dragging", "over", "out"); SLOTS.forEach(s => card(s).classList.remove("over"));
+    if (ev.type === "pointercancel") return;
+    if (!moved) { if (!from) say("Drag it onto formula A or B, or press A or B"); return; }
+    if (over && over !== from) add(over, id, from ? F[from].amounts[id] : undefined);
+    else if (!over && from) remove(from, id);
+  };
+  src.addEventListener("pointermove", move); src.addEventListener("pointerup", up); src.addEventListener("pointercancel", up);
+  e.preventDefault();
+}
+
+// small messages: a tip that follows the cursor, and a note that appears where you just acted
+const tip = $("#tip");
+function showTip(id, e, s) {
+  const i = ING[id], f = s && F[s], p = !f ? null : id === "aqua" ? D.itemsOf(f.amounts)[0].pct : f.amounts[id];
+  tip.innerHTML = `<b>${esc(i.short)}${p != null ? ` · ${fmt(p)}%` : ""}</b>${esc(i.func)}<br><u>${ZONES[i.zone]}</u>${i.min != null ? ` · usual ${fmt(i.min)}–${fmt(i.max)}%` : ""}`;
+  tip.classList.add("on"); moveTip(e);
+}
+function moveTip(e) { const w = tip.offsetWidth, x = e.clientX + 18 + w > innerWidth ? e.clientX - w - 18 : e.clientX + 18; tip.style.left = x + "px"; tip.style.top = Math.max(8, e.clientY + 14) + "px"; }
+function hideTip() { tip.classList.remove("on"); }
+function tipOn(el, id, s) { el.addEventListener("pointerenter", e => { if (e.pointerType === "mouse" && !document.body.classList.contains("dragging")) showTip(id, e, s); }); el.addEventListener("pointermove", e => { if (tip.classList.contains("on")) moveTip(e); }); el.addEventListener("pointerleave", hideTip); }
+function say(msg) {
+  const t = $("#toast"); t.textContent = msg; t.classList.add("on");
+  t.style.left = clamp(px - t.offsetWidth / 2, 8, Math.max(8, innerWidth - t.offsetWidth - 8)) + "px"; t.style.top = Math.max(8, py - 58) + "px";
+  clearTimeout(say.h); say.h = setTimeout(() => t.classList.remove("on"), 2800);
+}
+
+// the page is shown in a frame that has to be exactly as tall as its content
+function fit() {
+  try {
+    if (!window.frameElement) return;
+    const h = Math.ceil($("#app").getBoundingClientRect().height) + 6;
+    if (Math.abs(h - (fit.h || 0)) > 1 || frameElement.style.height !== h + "px") { fit.h = h; frameElement.style.height = h + "px"; }
+  } catch (e) {}
+}
+new ResizeObserver(fit).observe($("#app"));
+
+$("#grid").innerHTML = SLOTS.map(cardHTML).join("");
+buildLib();
+SLOTS.forEach(s => { wireCard(s); setInputs(s); rebuild(s); });
+live = true;
+bridge.start();
+setInterval(fit, 1000);
+})();
+</script>
+</body>
+</html>

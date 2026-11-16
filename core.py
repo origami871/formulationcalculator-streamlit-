@@ -5,10 +5,19 @@ Shared code for every page of Formulator Builder.
   PART B  formulas: state, phases, stability theory, suggested formula
   PART C  compliance: ingredient rules per country
   PART D  sensory theory
-  PART E  drawing: bottle, sensory chart, tables, page style
+  PART E  drawing: sensory chart, tables, page style
   PART F  suggestions: a free optimiser that searches for formulas
+  PART G  small helpers shared by the pages
+  PART H  the interactive pages (studio.html, bench.html) and their link to Streamlit
+  PART I  Claude: the Ask Claude button in the corner of every page
+  PART J  sample trial log
 """
+import base64
+import csv
+import json
+import os
 import random
+import re
 from html import escape
 from pathlib import Path
 
@@ -38,11 +47,29 @@ INGREDIENTS, PRODUCTS, REGULATIONS, OBLIGATIONS, WATCHLIST = load_data()
 ING = {i["id"]: i for i in INGREDIENTS}
 COUNTRIES = list(dict.fromkeys(r["country"] for r in OBLIGATIONS))
 
+
+def roles_of(i):
+    """The jobs an ingredient does in a formula, main job first. Some do two: the "roles" column of
+    ingredients.csv lists them separated by ; (an ingredient without one falls back to its category)."""
+    return [r.strip() for r in str(i.get("roles") or i["cat"]).split(";") if r.strip()]
+
+
+def pool_key(role):
+    """Where the Suggest page keeps the ingredients allowed for one job."""
+    return "sg_pool_" + re.sub(r"\W+", "_", role).strip("_").lower()
+
+
+ROLE_GROUPS = {}  # main job -> ingredient ids, in the order of the file
+for _i in INGREDIENTS:
+    if _i["id"] != "aqua":
+        ROLE_GROUPS.setdefault(roles_of(_i)[0], []).append(_i["id"])
+
 # colour of each category (used in the bottle and the ingredient list)
+# Same families as the Studio bottle: light blues = oil phase, deep blues = water phase, oranges = added cool.
 CATEGORIES = {
-    "Base": "#a9d3ee", "Humectant": "#9fd8c8", "Emollient": "#f2c46d", "Butter": "#e8a95b",
-    "Fatty alcohol": "#e9dcc0", "Emulsifier": "#c9a3e0", "Thickener / sensory": "#d6c7ae",
-    "Antioxidant": "#f7d9a0", "pH adjuster": "#c4c4c4", "Preservative": "#f29c9c",
+    "Base": "#0297DE", "Humectant": "#0277B0", "Emollient": "#CDEBFA", "Butter": "#A5DBF6",
+    "Fatty alcohol": "#F2FAFE", "Emulsifier": "#7FCBF2", "Thickener / sensory": "#03A9F4",
+    "Antioxidant": "#FFC4B0", "pH adjuster": "#FFA588", "Preservative": "#FC734D",
 }
 
 # design tokens for the parts Streamlit's theme cannot reach (SVG pictures, tags, tables)
@@ -58,8 +85,8 @@ MONO = "'IBM Plex Mono', ui-monospace, monospace"
 
 
 def T():
-    """Tokens for the theme the viewer is using right now."""
-    return TOKENS[st.context.theme.type or "light"]
+    """Design tokens. The whole site uses the midnight Studio look, whatever theme the browser asks for."""
+    return TOKENS["dark"]
 
 
 SLOTS = ("A", "B")
@@ -74,6 +101,25 @@ def fmt(n):
     if n is None:
         return "–"
     return f"{n:.4f}".rstrip("0").rstrip(".") if abs(n) < 0.01 else f"{n:.2f}".rstrip("0").rstrip(".")
+
+
+# The target pH of a formula is a range, because the right pH depends on the ingredients and the product.
+PH_DEFAULT = (5.0, 6.0)
+
+
+def ph_span(ph):
+    """Target pH as (low, high). A single number, as older saved formulas have, becomes a range of one point."""
+    if ph is None:
+        return PH_DEFAULT
+    if isinstance(ph, (int, float)):
+        return (float(ph), float(ph))
+    lo, hi = float(ph[0]), float(ph[1])
+    return (min(lo, hi), max(lo, hi))
+
+
+def ph_text(ph):
+    lo, hi = ph_span(ph)
+    return fmt(lo) if lo == hi else f"{fmt(lo)}–{fmt(hi)}"
 
 
 # ============================================================
@@ -95,7 +141,7 @@ def persistent_keys():
 
 
 def selected_ids(slot):
-    """Ingredients that are ticked in the sidebar (water is always included)."""
+    """Ingredients that are in the formula (water is always included)."""
     return ["aqua"] + [i["id"] for i in INGREDIENTS
                        if i["id"] != "aqua" and st.session_state.get(sel_key(slot, i["id"]), False)]
 
@@ -144,7 +190,7 @@ def analyse(items, ptype, ph):
     ids = [i["id"] for i in items]
 
     if len(items) == 1:
-        return [("info", "Start by ticking ingredients", "Then press “Suggest starting formula”.")], None
+        return [("info", "Only water so far", "Add ingredients, or press “Suggest starting formula”.")], None
 
     # 1. Total and water
     if water < 0:
@@ -233,10 +279,16 @@ def analyse(items, ptype, ph):
     if "tapioca" in ids and pres:
         add("info", "Starch raises microbial load", "Check preservative efficacy with a challenge test.")
 
-    # 11. pH
+    # 11. pH: the target is a range, and every ingredient with a working range should cover it
+    lo, hi = ph_span(ph)
     for i in items:
-        if i["ph_min"] is not None and not (i["ph_min"] <= ph <= i["ph_max"]):
-            add("warn", f"pH outside {i['short']} range", f"Target pH {ph}; {i['short']} works best at pH {fmt(i['ph_min'])}–{fmt(i['ph_max'])}.")
+        if i["ph_min"] is None:
+            continue
+        works = f"{i['short']} works best at pH {fmt(i['ph_min'])}–{fmt(i['ph_max'])}"
+        if hi < i["ph_min"] or lo > i["ph_max"]:
+            add("warn", f"pH outside {i['short']} range", f"Target pH {ph_text(ph)}; {works}.")
+        elif lo < i["ph_min"] or hi > i["ph_max"]:
+            add("info", f"Keep the pH inside the {i['short']} range", f"{works}, which covers only part of your target pH {ph_text(ph)}.")
     if "naoh" in ids and not any(i["cat"] == "Acid / polymer" for i in items):
         add("info", "NaOH may not be needed", "Nothing acidic is in the formula yet. Add NaOH only if the measured pH is below target.")
 
@@ -256,7 +308,7 @@ def complete_formula(slot):
     ids = selected_ids(slot)[1:]
     cats = {ING[i]["cat"] for i in ids}
     ptype = st.session_state[f"{slot}_ptype"]
-    ph = st.session_state[f"{slot}_ph"]
+    lo, hi = ph_span(st.session_state.get(f"{slot}_ph"))
     added, removed = [], []
     if "Humectant" not in cats:
         added.append("glycerin")
@@ -266,7 +318,7 @@ def complete_formula(slot):
         added.append("cetearyl")
     if "Emulsifier" not in cats:
         added.append("glucoside")
-        if ING["kcp"]["ph_min"] <= ph <= ING["kcp"]["ph_max"]:
+        if ING["kcp"]["ph_min"] <= lo and hi <= ING["kcp"]["ph_max"]:
             added.append("kcp")
     if ptype == "Rinse-off" and "Preservative" not in cats:
         added.append("mit")
@@ -317,32 +369,32 @@ def suggest(slot):
     return added, removed
 
 
-def suggest_clicked(slot):
-    """Run the suggestion and say what it did, because a formula that was already complete looks unchanged."""
-    added, removed = suggest(slot)
-    names = lambda ids: ", ".join(ING[i]["short"].rstrip(".") for i in ids)
-    parts = [f"Formula {slot}:"]
-    if added:
-        parts.append(f"Added {names(added)}.")
-    if removed:
-        parts.append(f"Removed {names(removed)}.")
-    st.toast(" ".join(parts + ["Levels set to theory-based starting points."]))
-
-
-def clear_all(slot):
+def set_formula(slot, amounts, name=None, ptype=None, ph=None):
+    """Replace formula A or B. amounts is {ingredient id: %}; name, product type and pH stay as they are unless given.
+    Everything is checked first, because the interactive pages send it from the browser."""
+    amounts = {i: max(0.0, min(100.0, float(p))) for i, p in (amounts or {}).items() if i in ING and i != "aqua"}
     for i in INGREDIENTS:
-        st.session_state[sel_key(slot, i["id"])] = False
+        st.session_state[sel_key(slot, i["id"])] = i["id"] in amounts
+    for i, p in amounts.items():
+        st.session_state[pct_key(slot, i)] = p
+    if name is not None:
+        st.session_state[f"{slot}_name"] = str(name).strip()[:60] or f"Formula {slot}"
+    if ptype in ("Leave-on", "Rinse-off"):
+        st.session_state[f"{slot}_ptype"] = ptype
+    if ph is not None:
+        try:
+            lo, hi = ph_span(ph)
+            st.session_state[f"{slot}_ph"] = (max(3.0, min(9.0, lo)), max(3.0, min(9.0, hi)))
+        except (TypeError, ValueError, IndexError):
+            pass
 
 
-def copy_formula(src, dst):
-    """Start one formula from the other, so a single change can be tested against it."""
-    for i in INGREDIENTS:
-        st.session_state[sel_key(dst, i["id"])] = st.session_state.get(sel_key(src, i["id"]), False)
-    for ing_id in selected_ids(src)[1:]:
-        st.session_state[pct_key(dst, ing_id)] = st.session_state.get(pct_key(src, ing_id), float(ING[ing_id]["typ"]))
-    st.session_state[f"{dst}_name"] = f"{st.session_state[f'{src}_name']} (copy)"
-    st.session_state[f"{dst}_ptype"] = st.session_state[f"{src}_ptype"]
-    st.session_state[f"{dst}_ph"] = st.session_state[f"{src}_ph"]
+def formula_state(slot):
+    """Formula A or B in the shape the interactive pages use."""
+    return {"name": st.session_state.get(f"{slot}_name", f"Formula {slot}"),
+            "ptype": st.session_state.get(f"{slot}_ptype", "Leave-on"),
+            "ph": list(ph_span(st.session_state.get(f"{slot}_ph"))),
+            "amounts": {i["id"]: i["pct"] for i in current_items(slot)[1:]}}
 
 
 def build_formulas():
@@ -350,7 +402,7 @@ def build_formulas():
     F = {}
     for slot in SLOTS:
         items = current_items(slot)
-        ptype, ph = st.session_state[f"{slot}_ptype"], st.session_state[f"{slot}_ph"]
+        ptype, ph = st.session_state[f"{slot}_ptype"], ph_span(st.session_state.get(f"{slot}_ph"))
         checks, score = analyse(items, ptype, ph)
         F[slot] = {"slot": slot, "name": st.session_state[f"{slot}_name"], "items": items, "ptype": ptype, "ph": ph,
                    "checks": checks, "score": score, "stats": stats(items), "sense": sensory(items)}
@@ -388,10 +440,13 @@ def compliance(items, ptype, ph, country):
             else:
                 rows.append(("ok", f"{name} is within the legal limit", f"{fmt(i['pct'])}% against a limit of {fmt(r['limit'])}%. {r['note']}", *src[1:]))
         elif r["rule"] == "max_ph":
-            if ph >= r["limit"]:
-                rows.append(("high", f"Target pH is too high for {name}", f"Target pH {ph} must stay below {fmt(r['limit'])}. {r['note']}", *src[1:]))
+            lo, hi = ph_span(ph)
+            if lo >= r["limit"]:
+                rows.append(("high", f"Target pH is too high for {name}", f"Target pH {ph_text(ph)} must stay below {fmt(r['limit'])}. {r['note']}", *src[1:]))
+            elif hi >= r["limit"]:
+                rows.append(("info", f"Keep the pH below {fmt(r['limit'])} for {name}", f"Part of your target pH {ph_text(ph)} is above the limit. {r['note']}", *src[1:]))
             else:
-                rows.append(("ok", f"Target pH is within the {name} limit", f"Target pH {ph} is below {fmt(r['limit'])}. {r['note']}", *src[1:]))
+                rows.append(("ok", f"Target pH is within the {name} limit", f"Target pH {ph_text(ph)} is below {fmt(r['limit'])}. {r['note']}", *src[1:]))
     for ing_id in covered - applied:
         rows.append(("ok", f"{present[ing_id]['short']}: no limit for {ptype.lower()} products", "The rule on file applies only to the other product type.", "", "sourced"))
     unchecked = [i["short"] for i in present.values() if i["id"] not in covered]
@@ -514,61 +569,8 @@ def feel_differences(a, b):
 
 
 # ============================================================
-# PART E — DRAWING: BOTTLE, SENSORY CHART, TABLES, PAGE STYLE
+# PART E — DRAWING: SENSORY CHART, TABLES, PAGE STYLE
 # ============================================================
-def bottle_html(items, slot):
-    """A pump bottle drawn to scale, with the ingredient list beside it grouped by phase.
-
-    Layer heights follow % w/w exactly. The only exception is a layer under about 0.8%,
-    which is drawn 2 px thick so it stays visible.
-    """
-    t = T()
-    groups = phases(items)
-    ytop, ybot, min_h = 110, 356, 2.0
-    H = ybot - ytop
-    stack = [i for p in PHASES for i in groups[p]]  # water at the bottom, then oil, then extras
-    total = sum(i["pct"] for i in stack) or 1
-    small = {i["id"] for i in stack if i["pct"] / total * H < min_h}
-    big_total = sum(i["pct"] for i in stack if i["id"] not in small) or 1
-    free = H - min_h * len(small)
-    height = {i["id"]: min_h if i["id"] in small else free * i["pct"] / big_total for i in stack}
-
-    body = (f"M20,{ytop + 24} Q20,{ytop} 46,{ytop} L104,{ytop} Q130,{ytop} 130,{ytop + 24} "
-            f"L130,{ybot - 22} Q130,{ybot} 104,{ybot} L46,{ybot} Q20,{ybot} 20,{ybot - 22} Z")
-    y, bands, lines = ybot, "", ""
-    for p in PHASES:
-        for i in groups[p]:
-            y -= height[i["id"]]
-            bands += (f'<rect x="14" y="{y:.2f}" width="122" height="{height[i["id"]]:.2f}" '
-                      f'fill="{CATEGORIES[i["cat"]]}" stroke="rgba(0,0,0,.12)" stroke-width=".5"/>')
-        if groups[p] and p != "extra":
-            lines += f'<line x1="14" x2="136" y1="{y:.2f}" y2="{y:.2f}" stroke="{t["bottle_line"]}" stroke-width="1.5"/>'
-    svg = (f'<svg viewBox="0 0 150 372" role="img" aria-label="Formula {slot} drawn to scale" style="width:150px;flex:none">'
-           f'<defs><clipPath id="clip{slot}"><path d="{body}"/></clipPath></defs>'
-           f'<rect x="65" y="56" width="20" height="56" rx="4" fill="#d9d2c6"/>'
-           f'<rect x="46" y="36" width="58" height="20" rx="8" fill="#8a8175"/>'
-           f'<rect x="98" y="41" width="40" height="9" rx="3" fill="#8a8175"/>'
-           f'<rect x="52" y="{ytop - 16}" width="46" height="24" rx="6" fill="#8a8175"/>'
-           f'<path d="{body}" fill="#f6f3ee"/><g clip-path="url(#clip{slot})">{bands}{lines}</g>'
-           f'<path d="{body}" fill="none" stroke="{t["bottle_line"]}" stroke-width="2.5"/>'
-           f'<path d="M32,{ytop + 40} Q30,{(ytop + ybot) // 2} 34,{ybot - 36}" stroke="rgba(255,255,255,.5)" '
-           f'stroke-width="5" fill="none" stroke-linecap="round"/></svg>')
-
-    rows = ""
-    for p in reversed(list(PHASES)):  # extras on top, as in the bottle
-        if not groups[p]:
-            continue
-        label, letter = PHASES[p]
-        rows += (f'<div class="fx-phase"><span>{label} ({letter})</span>'
-                 f'<span>{fmt(sum(i["pct"] for i in groups[p]))}%</span></div>')
-        for i in groups[p]:
-            rows += (f'<div class="fx-line"><span class="fx-sw" style="background:{CATEGORIES[i["cat"]]}"></span>'
-                     f'<span>{escape(i["short"])}</span><b>{fmt(i["pct"])}%</b></div>')
-    note = ("Drawn to scale. Layers under 0.8% are drawn 2 px thick so they stay visible." if small
-            else "Drawn to scale: layer height follows % w/w.")
-    return f'<div class="fx-bottle">{svg}<div class="fx-list">{rows}<p class="fx-scale">{note}</p></div></div>'
-
-
 def marker(slot, x, y):
     """A is a circle and B a diamond, so the formulas differ by shape as well as colour."""
     t = T()
@@ -613,6 +615,11 @@ def tag(slot):
     return f'<span class="fx-tag fx-{slot}">{slot}</span>'
 
 
+def text_table(head, rows):
+    """A table of words (table_html is for numbers): everything left-aligned in the normal font."""
+    return table_html(head, rows).replace('class="fx-table"', 'class="fx-table fx-text"', 1)
+
+
 def pill(overall):
     kind = {"fail": "high", "ok": "ok", None: "muted"}[overall]
     return f'<span class="fx-pill fx-{kind}">{STATUS_WORDS[overall]}</span>'
@@ -625,8 +632,111 @@ def table_html(head, rows):
     return f'<table class="fx-table"><thead><tr>{cells}</tr></thead><tbody>{body}</tbody></table>'
 
 
+SITE_CSS = """
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@400;500;600&display=swap');
+:root{--fx-ink:#02070A;--fx-blue:#0297DE;--fx-orange:#FC734D;--fx-paper:#EAF4FA;--fx-muted:rgba(234,244,250,.62);
+  --fx-faint:rgba(234,244,250,.38);--fx-line:rgba(234,244,250,.14);--fx-panel:rgba(234,244,250,.045);
+  --fx-serif:"PP Editorial New","Instrument Serif",Georgia,serif;
+  --fx-sans:"PP Neue Montreal","Neue Montreal","Inter Tight",system-ui,sans-serif}
+.stApp{color:var(--fx-paper);font-family:var(--fx-sans);background-color:var(--fx-ink);background-attachment:fixed;
+  background-image:radial-gradient(700px circle at 18% -5%,rgba(2,151,222,.16),transparent 70%),radial-gradient(900px circle at 92% 108%,rgba(252,115,77,.07),transparent 70%)}
+[data-testid="stHeader"]{background:rgba(2,7,10,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--fx-line)}
+[data-testid="stSidebar"]{background:#040d12;border-right:1px solid var(--fx-line)}
+[data-testid="stMainBlockContainer"]{max-width:1280px;padding-top:5.5rem}
+.stApp p,.stApp li,.stApp label,.stApp input,.stApp textarea,.stApp button,.stApp [data-baseweb="select"]{font-family:var(--fx-sans)}
+.stApp h1,.stApp h2,.stApp h3,.stApp h4{font-family:var(--fx-serif)!important;font-weight:400!important;letter-spacing:-.01em;line-height:1.05;color:var(--fx-paper)}
+.stApp h2{font-size:clamp(34px,3.6vw,52px)}
+.stApp h3{font-size:clamp(28px,2.8vw,40px)}
+.stApp h4{font-size:28px}
+[data-testid="stCaptionContainer"],[data-testid="stCaptionContainer"] p{color:var(--fx-muted)}
+.stApp hr{border-color:var(--fx-line)}
+.stApp a{color:var(--fx-blue)}
+
+/* page header, the same shape as the Studio's section headers */
+.fx-eyebrow{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--fx-faint)}
+.fx-eyebrow b{color:var(--fx-orange);font-weight:500;margin-right:.6em}
+.stApp h1.fx-h1{font-size:clamp(44px,5.4vw,84px);margin:14px 0 18px;padding:0;line-height:1}
+.fx-h1 em{font-style:italic;color:var(--fx-orange)}
+.fx-lead{color:var(--fx-muted);max-width:62ch;margin:0 0 26px;font-size:16px;line-height:1.5}
+
+/* buttons are pills; the main action is electric blue */
+.stApp .stButton button,.stApp .stDownloadButton button,.stApp .stFormSubmitButton button,.stApp [data-testid="stPageLink"] a{
+  border-radius:999px;border:1px solid var(--fx-line);background:transparent;color:var(--fx-paper);padding:.45rem 1.1rem;transition:border-color .2s,background .2s}
+.stApp .stButton button:hover,.stApp .stDownloadButton button:hover{border-color:var(--fx-paper);color:var(--fx-paper)}
+.stApp button[kind="primary"],.stApp [data-testid="stBaseButton-primary"]{background:var(--fx-blue);border-color:var(--fx-blue)}
+.stApp button[kind="primary"]:hover,.stApp [data-testid="stBaseButton-primary"]:hover{background:#28b0f2;border-color:#28b0f2}
+.stApp button[kind="primary"] p,.stApp [data-testid="stBaseButton-primary"] p{color:var(--fx-ink);font-weight:500}
+.stApp button:disabled{opacity:.4}
+
+/* inputs sit on the same faint panel as the Studio cards */
+.stApp [data-baseweb="input"],.stApp [data-baseweb="base-input"],.stApp [data-baseweb="textarea"],.stApp [data-baseweb="select"]>div{
+  background:var(--fx-panel)!important;border-color:var(--fx-line)!important;border-radius:10px!important}
+.stApp [data-baseweb="base-input"]{border:0!important}
+.stApp [data-baseweb="input"]:focus-within,.stApp [data-baseweb="select"]>div:focus-within{border-color:var(--fx-blue)!important}
+.stApp [data-testid="stNumberInput"] button{background:transparent;color:var(--fx-muted)}
+.stApp [data-baseweb="tag"]{background:rgba(2,151,222,.2)!important;border-radius:999px!important;color:var(--fx-paper)!important}
+.stApp [data-testid="stWidgetLabel"] p{color:var(--fx-muted);font-size:14px}
+.stApp [data-testid="stFileUploaderDropzone"]{background:var(--fx-panel);border:1px dashed var(--fx-line);border-radius:16px}
+
+/* cards: expanders, alerts, metrics, tables */
+.stApp [data-testid="stExpander"] details{border:1px solid var(--fx-line);border-radius:16px;background:var(--fx-panel);overflow:hidden}
+.stApp [data-testid="stExpander"] summary:hover{color:var(--fx-blue)}
+.stApp [data-testid="stAlert"]{border-radius:14px}
+.stApp [data-testid="stAlertContainer"]{border-radius:14px;border:1px solid var(--fx-line)}
+.stApp [data-testid="stMetric"]{border:1px solid var(--fx-line);border-radius:16px;background:var(--fx-panel);padding:16px 18px}
+.stApp [data-testid="stMetricValue"]{font-family:var(--fx-serif);font-size:54px;line-height:1}
+.stApp [data-testid="stMetricLabel"] p{color:var(--fx-muted)}
+.stApp [data-testid="stDataFrame"]{border:1px solid var(--fx-line);border-radius:14px;overflow:hidden}
+.stApp [data-baseweb="tab-list"]{gap:4px}
+.stApp button[data-baseweb="tab"]{border-radius:999px;padding:6px 14px}
+.stApp button[data-baseweb="tab"][aria-selected="true"]{background:var(--fx-panel)}
+
+/* section headers inside a page, and the small step cards */
+.fx-section{margin-top:72px}
+.stApp h2.fx-h2{font-size:clamp(36px,4vw,60px);margin:12px 0 14px;padding:0;line-height:1}
+.fx-h2 em{font-style:italic;color:var(--fx-orange)}
+.fx-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:0 0 28px}
+.fx-step{border:1px solid var(--fx-line);border-radius:16px;background:var(--fx-panel);padding:16px 18px}
+.fx-step span{font-size:12px;letter-spacing:.14em;color:var(--fx-orange)}
+.fx-step b{display:block;font-family:var(--fx-serif);font-weight:400;font-size:24px;line-height:1.1;margin:6px 0 8px}
+.fx-step p{margin:0;color:var(--fx-muted);font-size:14px;line-height:1.45}
+.stApp [data-testid="stPills"] button,.stApp [data-testid="stBaseButton-pills"],.stApp [data-testid="stBaseButton-pillsActive"]{border-radius:999px}
+
+/* Ask Claude: a button fixed to the bottom right corner of every page */
+.st-key-fx_claude{position:fixed;right:22px;bottom:22px;z-index:1000;width:auto!important}
+.st-key-fx_claude [data-testid="stPopover"]>div>button,.st-key-fx_claude [data-testid="stPopoverButton"]{background:var(--fx-blue);border:1px solid var(--fx-blue);
+  border-radius:999px;padding:.6rem 1.2rem;box-shadow:0 12px 40px rgba(2,151,222,.35)}
+.st-key-fx_claude [data-testid="stPopover"]>div>button:hover,.st-key-fx_claude [data-testid="stPopoverButton"]:hover{background:#28b0f2;border-color:#28b0f2}
+.st-key-fx_claude [data-testid="stPopover"]>div>button *,.st-key-fx_claude [data-testid="stPopoverButton"] *{color:var(--fx-ink);font-weight:500}
+[data-testid="stPopoverBody"]{background:#040d12;border:1px solid var(--fx-line);border-radius:20px;width:min(420px,calc(100vw - 28px));max-height:min(680px,calc(100vh - 110px));
+  box-shadow:0 24px 80px rgba(0,0,0,.6)}
+.fx-chat-title{font-family:var(--fx-serif);font-size:28px;line-height:1;margin:0 0 6px}
+.fx-chat-title em{font-style:italic;color:var(--fx-orange)}
+.fx-chat-sub{color:var(--fx-muted);font-size:13px;margin:0 0 4px}
+.fx-msg{max-width:92%;width:fit-content;padding:10px 14px;border-radius:16px;font-size:14.5px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 2px}
+.fx-msg.fx-user{margin-left:auto;background:rgba(2,151,222,.16);border:1px solid rgba(2,151,222,.4);border-bottom-right-radius:4px}
+.fx-msg.fx-assistant{background:var(--fx-panel);border:1px solid var(--fx-line);border-bottom-left-radius:4px}
+.fx-msg.fx-error{border:1px solid rgba(252,115,77,.5);background:rgba(252,115,77,.08)}
+"""
+
+
+def page_header(number, eyebrow, title, accent, lead):
+    """The big header at the top of every page: small numbered label, serif title with one orange word, a lead line."""
+    st.markdown(f'<div class="fx-eyebrow"><b>{number}</b>{escape(eyebrow)}</div>'
+                f'<h1 class="fx-h1">{escape(title)} <em>{escape(accent)}</em></h1>'
+                f'<p class="fx-lead">{escape(lead)}</p>', unsafe_allow_html=True)
+
+
+def section_header(number, eyebrow, title, accent, lead=""):
+    """A numbered section inside a page, the same shape as the sections of the Studio."""
+    st.markdown(f'<div class="fx-section"><div class="fx-eyebrow"><b>{number}</b>{escape(eyebrow)}</div>'
+                f'<h2 class="fx-h2">{escape(title)} <em>{escape(accent)}</em></h2>'
+                + (f'<p class="fx-lead">{escape(lead)}</p>' if lead else "") + "</div>", unsafe_allow_html=True)
+
+
 def inject_css():
     t = T()
+    st.markdown(f"<style>{SITE_CSS}</style>", unsafe_allow_html=True)
     st.markdown(f"""<style>
 .fx-tag {{display:inline-block;min-width:1.5em;padding:0 .4em;border-radius:3px;text-align:center;font-weight:600;color:{t['on_tag']}}}
 .fx-A {{background:{t['A']}}}
@@ -637,14 +747,7 @@ def inject_css():
 .fx-table th:first-child, .fx-table td:first-child {{text-align:left;padding-left:0;font-family:inherit}}
 .fx-note {{margin:0 0 12px}}
 .fx-note small {{color:{t['muted']};display:block}}
-.fx-bottle {{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}}
-.fx-list {{flex:1;min-width:190px}}
-.fx-phase {{display:flex;justify-content:space-between;font-weight:600;border-bottom:1px solid {t['line']};margin-top:14px;padding-bottom:4px}}
-.fx-phase:first-child {{margin-top:0}}
-.fx-line {{display:flex;gap:8px;align-items:center;padding:3px 0}}
-.fx-line b {{margin-left:auto;font-weight:400;font-family:{MONO};font-variant-numeric:tabular-nums}}
-.fx-sw {{width:12px;height:12px;border-radius:3px;border:1px solid rgba(0,0,0,.2);flex:none}}
-.fx-scale {{color:{t['muted']};font-size:13px;margin:12px 0 0}}
+.fx-table.fx-text th, .fx-table.fx-text td {{text-align:left;font-family:inherit;vertical-align:top}}
 .fx-pill {{display:inline-block;padding:1px 10px;border:1px solid currentColor;border-radius:999px;font-size:14px;font-weight:500}}
 .fx-high {{color:{t['high']}}}
 .fx-ok {{color:{t['ok']}}}
@@ -681,8 +784,8 @@ def has_core(pool):
     return bool(cats & {"Emollient", "Butter"}) and "Fatty alcohol" in cats and "Emulsifier" in cats
 
 
-def optimise(pool, ptype, ph, countries, target, seed=0, tries=6000):
-    """Up to three distinct formulas, best first. Each is a dict with amounts, stability, dist, sense and items."""
+def optimise(pool, ptype, ph, countries, target, seed=0, tries=6000, count=3):
+    """Up to "count" distinct formulas, best first. Each is a dict with amounts, stability, dist, sense and items."""
     rng = random.Random(seed)
     pool = eligible(pool, ptype)
     pick = lambda *cats: [i for i in pool if ING[i]["cat"] in cats]
@@ -761,25 +864,19 @@ def optimise(pool, ptype, ph, countries, target, seed=0, tries=6000):
 
     ranked = sorted((r for r in seen.values() if r), key=lambda r: -r["fit"])
     out, used = [], set()
-    for res in ranked:  # prefer three different ingredient sets over three tweaks of one
+    for res in ranked:  # prefer different ingredient sets over tweaks of one
         ids = frozenset(res["amounts"])
         if ids not in used:
             used.add(ids)
             out.append(res)
-        if len(out) == 3:
+        if len(out) == count:
             break
-    return out + [r for r in ranked if r not in out][:3 - len(out)]
+    return out + [r for r in ranked if r not in out][:count - len(out)]
 
 
 def load_suggestion(result, slot, name):
     """Put a suggested formula into formula A or B (runs as a button callback)."""
-    for i in INGREDIENTS:
-        st.session_state[sel_key(slot, i["id"])] = i["id"] in result["amounts"]
-    for i, p in result["amounts"].items():
-        st.session_state[pct_key(slot, i)] = p
-    st.session_state[f"{slot}_name"] = name
-    st.session_state[f"{slot}_ptype"] = result["ptype"]
-    st.session_state[f"{slot}_ph"] = result["ph"]
+    set_formula(slot, result["amounts"], name, result["ptype"], result["ph"])
     st.session_state["sg_loaded"] = slot
 
 # ============================================================
@@ -802,9 +899,9 @@ def rule_text(country, ing_id):
     for r in REGULATIONS:
         if r["country"] != country or r["ingredient"] != ing_id:
             continue
-        where = {"Leave-on": "Leave-on", "Rinse-off": "Rinse-off", "Both": "All products"}[r["applies_to"]]
+        where = "All products" if r["applies_to"] == "Both" else str(r["applies_to"])
         what = {"prohibited": "not allowed", "max_pct": f"up to {fmt(r['limit'])}%",
-                "max_ph": f"product pH below {fmt(r['limit'])}"}[r["rule"]]
+                "max_ph": f"product pH below {fmt(r['limit'])}"}.get(r["rule"], str(r["rule"]))
         parts.append(f"{where}: {what}")
     return "; ".join(parts) or None
 
@@ -829,3 +926,310 @@ def sense_changes(old, new):
         if a is not None and b is not None and abs(b - a) >= 0.3:
             rows.append((abs(b - a), f"{label}: {a:.1f} → {b:.1f} ({b - a:+.1f})".replace("-", "−").replace("−>", "->")))
     return [text for _, text in sorted(rows, reverse=True)]
+
+
+# ============================================================
+# PART H — THE INTERACTIVE PAGES AND THEIR LINK TO STREAMLIT
+# studio.html (Studio) and bench.html (Formulation) are plain HTML, CSS and JavaScript shown inside the page.
+# Both use fx_shared.js. Python hands them the data from the CSV files, reads the messages they type into a
+# hidden text box, and writes its replies into a hidden element that they re-read.
+#
+# Fonts: put the PP Editorial New and PP Neue Montreal files (.woff2 or .otf, named PPEditorialNew-Regular,
+# PPEditorialNew-Italic, PPNeueMontreal-Book, PPNeueMontreal-Medium) in a folder named fonts next to app.py and
+# they are used automatically. Without them the pages fall back to Instrument Serif and Inter Tight.
+# ============================================================
+WEIGHTS = {"thin": 100, "ultralight": 200, "light": 300, "book": 400, "regular": 400, "medium": 500,
+           "semibold": 600, "ultrabold": 800, "bold": 700}
+
+
+def raw_rows(name):
+    with open(HERE / name, newline="", encoding="utf-8-sig") as f:
+        return list(csv.DictReader(f))
+
+
+def font_faces():
+    """@font-face rules for every licensed font file found in the fonts folder, embedded in the page."""
+    css = ""
+    for f in sorted((HERE / "fonts").glob("*")):
+        low, ext = f.stem.lower().replace(" ", "").replace("-", ""), f.suffix.lower()
+        family = "PP Editorial New" if "editorialnew" in low else "PP Neue Montreal" if "neuemontreal" in low else None
+        if family is None or ext not in (".woff2", ".woff", ".otf", ".ttf"):
+            continue
+        weight = next((w for k, w in WEIGHTS.items() if k in low), 400)
+        style = "italic" if "italic" in low else "normal"
+        kind = {".woff2": "woff2", ".woff": "woff", ".otf": "opentype", ".ttf": "truetype"}[ext]
+        data = base64.b64encode(f.read_bytes()).decode()
+        css += (f'@font-face{{font-family:"{family}";font-weight:{weight};font-style:{style};font-display:swap;'
+                f'src:url(data:font/{ext[1:]};base64,{data}) format("{kind}")}}\n')
+    return css
+
+
+@st.cache_data
+def _page(name, stamp):  # stamp changes when a file changes, which makes Streamlit build the page again
+    html = (HERE / name).read_text(encoding="utf-8")
+    data = {"ingredients": raw_rows("ingredients.csv"), "products": raw_rows("products.csv"),
+            "regulations": raw_rows("regulations.csv")}
+    shared = (HERE / "fx_shared.js").read_text(encoding="utf-8")
+    html = html.replace('<script src="fx_shared.js"></script>', f"<script>\n{shared}\n</script>")
+    html = html.replace("/*__DATA__*/null", json.dumps(data).replace("</", "<\\/"))
+    return html.replace("/*__FONTS__*/", font_faces())
+
+
+def interactive_page(name):
+    """studio.html or bench.html as one self-contained page: shared script, data and fonts written into it."""
+    watched = [HERE / name, HERE / "fx_shared.js", HERE / "ingredients.csv", HERE / "products.csv",
+               HERE / "regulations.csv", *(HERE / "fonts").glob("*")]
+    return _page(name, tuple(p.stat().st_mtime for p in watched if p.is_file()))
+
+
+def inbox_event(key):
+    """The newest message an interactive page typed into its hidden text box. Each message arrives once."""
+    try:
+        event = json.loads(st.session_state.get(key) or "null")
+    except ValueError:
+        return None
+    if not isinstance(event, dict) or event.get("id") == st.session_state.get(key + "_done"):
+        return None
+    st.session_state[key + "_done"] = event.get("id")
+    return event
+
+
+def outbox(element_id, payload):
+    """Write Python's reply where the interactive page can read it."""
+    text = base64.b64encode(json.dumps(payload).encode()).decode()
+    st.markdown(f'<div id="{element_id}" hidden>{text}</div>', unsafe_allow_html=True)
+
+
+# ============================================================
+# PART I — CLAUDE
+# Ask Claude needs an API key. Never put the key in a file you upload to GitHub. Instead:
+#   on Streamlit Community Cloud:  app menu > Settings > Secrets, and add the line
+#                                  ANTHROPIC_API_KEY = "sk-ant-..."
+#   on your own computer:          put the same line in .streamlit/secrets.toml (keep that file off GitHub)
+# A visitor can also type their own key into the Ask Claude panel. It is kept in memory for that visit only.
+# Without a key everything else still works and the panel says Claude is not connected.
+# ============================================================
+MODEL = "claude-opus-5-5"
+MAX_QUESTIONS = 40  # per visit on the site's own key, so one visitor cannot run up the bill
+STARTERS = ["What should I change first?", "How can I make it feel lighter?", "Explain my stability score"]
+
+
+def secret(name):
+    try:
+        value = st.secrets.get(name)
+    except Exception:  # no secrets file at all
+        value = None
+    return value or os.environ.get(name)
+
+
+def claude_key():
+    return st.session_state.get("fx_user_key") or secret("ANTHROPIC_API_KEY")
+
+
+def claude_ready():
+    try:
+        import anthropic  # noqa: F401
+    except ImportError:
+        return False
+    return bool(claude_key())
+
+
+def system_prompt():
+    library = "\n".join(
+        f"- {i['inci']} ({i['short']}): {', '.join(roles_of(i))}, {i['phase']} phase, "
+        f"usual {fmt(i['min'])}-{fmt(i['max'])}%. {i['notes']}" for i in INGREDIENTS)
+    return (
+        "You are the formulation assistant inside Formulator Builder, a tool for building oil-in-water cosmetic "
+        "emulsions such as body lotions and creams. The person asking is working on the formulation, or the two "
+        "formulations A and B, shown in the <current_formula> block of their latest message. It lists the "
+        "ingredients by phase with % w/w and the tool's theory-based stability checks, and may include the "
+        "predicted feel and a compliance summary.\n\n"
+        "Answer the question about that formulation directly and practically: say what to change, by how much, and "
+        "why. Prefer ingredients from the library below, because those are the ones the person can add in the tool; "
+        "if something outside the library would clearly work better, say so and name it. The stability score and "
+        "feel numbers are predictions from formulation theory, not measurements, so treat them as indications. "
+        "Legal limits vary by country and change over time; when one matters, give what you know and tell the "
+        "person to confirm it against the current official text. A formula is only proven by making a batch and "
+        "running stability and preservative challenge tests; mention this when it bears on the question, without "
+        "repeating it in every answer.\n\n"
+        "The answer is shown in a small chat panel that displays plain text only. Write short paragraphs in plain "
+        "sentences, with no Markdown symbols such as asterisks, pound signs or tables. Keep most answers under "
+        "150 words unless the question needs more.\n\n"
+        f"Ingredient library:\n{library}")
+
+
+def ask_claude(history, question, context):
+    """Returns (role, text): role is "assistant" for an answer or "error" for a message to show instead."""
+    try:
+        import anthropic
+    except ImportError:
+        return "error", "Claude is not installed on the server. Add the line anthropic to requirements.txt and redeploy."
+    key = claude_key()
+    if not key:
+        return "error", "Claude is not connected yet. Add ANTHROPIC_API_KEY to the app's secrets, or enter your own key."
+    messages = [{"role": m["role"], "content": m["text"]} for m in history if m["role"] in ("user", "assistant")]
+    messages.append({"role": "user", "content": f"<current_formula>\n{context}\n</current_formula>\n\n{question}"})
+    request = dict(model=MODEL, max_tokens=16000, system=system_prompt(), messages=messages,
+                   output_config={"effort": "medium"})
+    client = anthropic.Anthropic(api_key=key)
+    try:
+        try:
+            # if the safety system declines a question, let the API hand it to a fallback model
+            reply = client.beta.messages.create(betas=["server-side-fallback-2026-07-01"], fallbacks="default", **request)
+        except TypeError:  # an older anthropic package without the fallbacks option
+            reply = client.messages.create(**request)
+    except anthropic.AuthenticationError:
+        return "error", "The Claude API key was rejected. Check the key and try again."
+    except anthropic.RateLimitError:
+        return "error", "Claude is busy right now. Wait a moment and ask again."
+    except anthropic.APIStatusError as e:
+        return "error", f"Claude returned an error ({e.status_code}). Try again in a moment."
+    except anthropic.APIConnectionError:
+        return "error", "Could not reach Claude. Check the internet connection and try again."
+    if reply.stop_reason == "refusal":
+        return "error", "Claude declined to answer that question. Try asking it differently."
+    text = "".join(b.text for b in reply.content if b.type == "text").strip()
+    return ("assistant", text) if text else ("error", "Claude sent back an empty answer. Try again.")
+
+
+def answer(question, context, q=None):
+    """Ask Claude and add the question and the reply to this visit's conversation, shared by every page."""
+    chat = st.session_state.setdefault("fx_chat", [])
+    question = str(question)[:2000]
+    own_key = bool(st.session_state.get("fx_user_key"))
+    if not own_key and sum(m["role"] == "user" for m in chat) >= MAX_QUESTIONS:
+        role, text = "error", "You have reached the question limit for this visit. Reload the page to start again."
+    else:
+        role, text = ask_claude(chat, question, str(context)[:20000])
+    chat.append({"role": "user", "text": question, "q": q})
+    chat.append({"role": role, "text": text})
+    return role, text
+
+
+def formula_text(f, countries=()):
+    """One formula in plain words, for Claude."""
+    lines = [f"Formula {f['slot']}: {f['name']} ({f['ptype']}, target pH {ph_text(f['ph'])})"]
+    for phase, (label, _) in PHASES.items():
+        members = [i for i in f["items"] if i["pct"] > 0 and phase_of(i) == phase]
+        if members:
+            lines.append(f"{label}: " + ", ".join(f"{i['inci']} {fmt(i['pct'])}%" for i in members))
+    lines.append(f"Stability score (theory): {'n/a' if f['score'] is None else f['score']}/100")
+    lines += [f"[{level}] {title}: {detail}" for level, title, detail in f["checks"] if level != "ok"]
+    if f["sense"]:
+        feel = ", ".join(f"{label} {f['sense'][k]:.1f}" for k, (label, _, _) in SENSES.items() if f["sense"][k] is not None)
+        lines.append(f"Predicted feel, 0-10 (reads as {product_form(f['sense']).lower()}): {feel}")
+    for country in countries:
+        overall, rows = compliance(f["items"], f["ptype"], f["ph"], country)
+        problems = "; ".join(title for level, title, *_ in rows if level == "high")
+        lines.append(f"Compliance in {country}: {STATUS_WORDS[overall]}" + (f" ({problems})" if problems else ""))
+    return "\n".join(lines)
+
+
+def claude_corner():
+    """The Ask Claude button in the bottom right corner. It opens a small chat about formulas A and B."""
+    chat = st.session_state.setdefault("fx_chat", [])
+    bubble = lambda m: f'<div class="fx-msg fx-{m["role"]}">{escape(m["text"])}</div>'
+    with st.container(key="fx_claude"):
+        with st.popover("Ask Claude"):
+            st.markdown('<p class="fx-chat-title">Ask <em>Claude</em></p><p class="fx-chat-sub">Claude sees formulas A and B: '
+                        'their ingredients, amounts, stability checks, predicted feel and compliance.</p>',
+                        unsafe_allow_html=True)
+            box = st.container(height=320, border=False) if chat else st.container()
+            for m in chat:
+                box.markdown(bubble(m), unsafe_allow_html=True)
+            picked = None
+            if not chat:
+                for n, text in enumerate(STARTERS):
+                    if st.button(text, key=f"fx_starter_{n}"):
+                        picked = text
+            with st.form("fx_claude_form", clear_on_submit=True, border=False):
+                typed = st.text_area("Your question", key="fx_claude_q", max_chars=2000, height=80,
+                                     placeholder="Ask about formula A or B", label_visibility="collapsed")
+                sent = st.form_submit_button("Ask", type="primary")
+            question = picked or (typed.strip() if sent and typed else None)
+            if question:
+                box.markdown(bubble({"role": "user", "text": question}), unsafe_allow_html=True)
+                with box:
+                    with st.spinner("Claude is thinking…"):
+                        F = build_formulas()
+                        countries = st.session_state.get("countries", [])
+                        answer(question, "\n\n".join(formula_text(F[s], countries) for s in SLOTS))
+                st.rerun()
+            if not claude_ready():
+                st.caption("Claude is not connected yet. The site owner adds ANTHROPIC_API_KEY to the app's secrets, "
+                           "or you can use your own key below.")
+            else:
+                st.caption("Claude's answers are guidance, not a substitute for stability, safety and challenge testing.")
+            with st.expander("Use your own Claude API key"):
+                st.caption("Optional. Create a key at platform.claude.com. It is kept in memory for this visit only "
+                           "and is never saved or shown.")
+                typed_key = st.text_input("Anthropic API key", type="password", key="fx_user_key_in",
+                                          placeholder="sk-ant-…", label_visibility="collapsed")
+                if typed_key:
+                    st.session_state["fx_user_key"] = typed_key.strip()
+                if st.session_state.get("fx_user_key"):
+                    st.caption("Your own key is in use for this visit.")
+                    if st.button("Stop using my key", key="fx_user_key_clear"):
+                        st.session_state.pop("fx_user_key", None)
+                        st.session_state.pop("fx_user_key_in", None)
+                        st.rerun()
+
+
+# ============================================================
+# PART J — SAMPLE TRIAL LOG
+# Fifteen made-up lab trials, so the Trial log page and its machine-learning model can be tried before you
+# have results of your own. They follow the usual patterns: too little emulsifier separates, a lot of shea
+# turns grainy, no preservative fails the microbial test. Replace them with your real results.
+# ============================================================
+TRIAL_FEATURES = [i["inci"] for i in INGREDIENTS]
+LOG_COLS = ["date", "name", "product_type", "target_pH", *TRIAL_FEATURES, "predicted_score", "lab_result", "notes"]
+RESULTS = ["Not tested yet", "Stable (passed)", "Separation / creaming", "Grainy / crystals", "Viscosity drift",
+           "pH drift", "Microbial fail", "Other"]
+SAMPLE_TRIALS = [  # name, product type, {ingredient id: %}, lab result, notes
+    ("Light lotion v1", "Leave-on", {"glycerin": 4, "coco": 5, "dba": 3, "cetearyl": 3, "glucoside": 1.5, "kcp": 0.9, "tapioca": 2, "pheno": 0.9},
+     "Stable (passed)", "12 weeks at 40 °C, no change"),
+    ("Light lotion v2, less emulsifier", "Leave-on", {"glycerin": 4, "coco": 6, "dba": 4, "cetearyl": 3, "glucoside": 0.5, "pheno": 0.9},
+     "Separation / creaming", "Oil layer after 2 weeks at 45 °C"),
+    ("Rich cream v1", "Leave-on", {"glycerin": 4, "cct": 5, "almond": 3, "shea": 3, "cetearyl": 3, "glucoside": 1.7, "kcp": 1.4, "pheno": 0.9, "toco": 0.2},
+     "Stable (passed)", "12 weeks at 40 °C, no change"),
+    ("Rich cream, high shea", "Leave-on", {"glycerin": 4, "cct": 4, "almond": 3, "shea": 8, "cetearyl": 3, "glucoside": 2, "kcp": 1.5, "pheno": 0.9, "toco": 0.2},
+     "Grainy / crystals", "Grains after 3 freeze-thaw cycles"),
+    ("Body milk, no fatty alcohol", "Leave-on", {"glycerin": 3, "coco": 6, "cct": 4, "glucoside": 2, "pheno": 0.9},
+     "Separation / creaming", "Creamed after 4 weeks at room temperature"),
+    ("Body milk v2", "Leave-on", {"glycerin": 3, "coco": 6, "cct": 4, "cetearyl": 2, "glucoside": 2, "kcp": 0.5, "pheno": 0.9},
+     "Stable (passed)", "8 weeks at 40 °C, no change"),
+    ("Almond lotion, no preservative", "Leave-on", {"glycerin": 4, "almond": 6, "coco": 4, "cetearyl": 3, "glucoside": 2, "kcp": 0.7},
+     "Microbial fail", "Failed the challenge test at day 7"),
+    ("Almond lotion v2", "Leave-on", {"glycerin": 4, "almond": 6, "coco": 4, "cetearyl": 3, "glucoside": 2, "kcp": 0.7, "pheno": 0.9, "toco": 0.2},
+     "Stable (passed)", "Passed the challenge test, 12 weeks at 40 °C"),
+    ("Butter cream, low emulsifier", "Leave-on", {"glycerin": 5, "shea": 6, "cct": 6, "almond": 4, "cetearyl": 4, "glucoside": 1, "pheno": 1},
+     "Separation / creaming", "Oil ring after 1 week at 45 °C"),
+    ("Butter cream v2", "Leave-on", {"glycerin": 5, "shea": 4, "cct": 6, "almond": 4, "cetearyl": 4, "glucoside": 2.2, "kcp": 1.8, "pheno": 1, "toco": 0.3},
+     "Stable (passed)", "12 weeks at 40 °C, slight thickening"),
+    ("In-shower lotion v1", "Rinse-off", {"glycerin": 3, "cct": 8, "shea": 3, "cetearyl": 4, "glucoside": 2, "kcp": 1.3, "mit": 0.0015},
+     "Microbial fail", "Mould at week 6: MIT alone was not enough"),
+    ("In-shower lotion v2", "Rinse-off", {"glycerin": 3, "cct": 8, "shea": 3, "cetearyl": 4, "glucoside": 2, "kcp": 1.3, "mit": 0.0015, "pheno": 0.8},
+     "Stable (passed)", "Passed the challenge test"),
+    ("Starch lotion, heavy fatty alcohol", "Leave-on", {"glycerin": 4, "coco": 5, "cetearyl": 7, "glucoside": 2, "tapioca": 5, "pheno": 0.9},
+     "Viscosity drift", "Thickened to a paste by week 8"),
+    ("Dry-touch lotion", "Leave-on", {"glycerin": 3, "dba": 6, "coco": 4, "cetearyl": 2.5, "glucoside": 1.6, "kcp": 0.7, "tapioca": 2, "pheno": 0.9},
+     "Stable (passed)", "12 weeks at 40 °C, no change"),
+    ("Glycerin-rich lotion", "Leave-on", {"glycerin": 8, "coco": 5, "cetearyl": 3, "glucoside": 1.2, "kcp": 0.6, "pheno": 0.9},
+     "Not tested yet", "Batch made, stability test starts next week"),
+]
+
+
+def sample_trial_rows():
+    """The sample trials as rows of the trial log (one dict per trial, with the columns of LOG_COLS)."""
+    rows = []
+    for n, (name, ptype, amounts, result, notes) in enumerate(SAMPLE_TRIALS):
+        amounts = {i: float(p) for i, p in amounts.items() if i in ING}
+        items = [{**ING["aqua"], "pct": 100 - sum(amounts.values())}] + [{**ING[i], "pct": p} for i, p in amounts.items()]
+        _, score = analyse(items, ptype, PH_DEFAULT)
+        row = {"date": f"2026-{8 + n // 6:02d}-{3 + 4 * (n % 6):02d}", "name": name, "product_type": ptype,
+               "target_pH": ph_text(PH_DEFAULT), **{c: 0.0 for c in TRIAL_FEATURES}, "predicted_score": score,
+               "lab_result": result, "notes": notes}
+        for i in items:
+            row[i["inci"]] = round(i["pct"], 4)
+        rows.append(row)
+    return rows

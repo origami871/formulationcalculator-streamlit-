@@ -101,7 +101,7 @@ section{position:relative;z-index:1}
   transition:border-color .2s,transform .2s,background .2s,opacity .2s;opacity:.55}
 .card:hover,.card:focus-visible{transform:translateY(-3px);opacity:1;outline:0;border-color:var(--paper)}
 .card[aria-checked=true]{opacity:1;border-color:var(--blue);background:rgba(2,151,222,.1)}
-.card .k{font-size:12px;color:var(--orange);letter-spacing:.14em}
+.card .k{font-size:11px;color:var(--orange);letter-spacing:.14em;text-transform:uppercase;display:block;padding-right:26px}
 .card .tick{position:absolute;right:12px;top:12px;width:20px;height:20px;border-radius:50%;border:1px solid var(--faint);display:grid;place-items:center;font-size:12px;color:transparent}
 .card[aria-checked=true] .tick{background:var(--blue);border-color:var(--blue);color:var(--ink)}
 .card b{display:block;font-family:var(--serif);font-weight:400;font-size:21px;line-height:1.15;margin:6px 0 8px}
@@ -120,6 +120,19 @@ table.mx i.on{background:var(--blue);border-color:var(--blue)}
 table.mx .dim{opacity:.25}
 table.mx td.hot,table.mx th.hot{background:rgba(2,151,222,.1)}
 .note{color:var(--faint);font-size:13px;margin-top:14px}
+.mxwrap{overflow-x:auto}
+table.mx th{white-space:nowrap}
+.find{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:999px;padding:9px 16px;background:var(--panel);margin:0 0 14px;
+  color:var(--faint);font-size:13px;transition:border-color .2s}
+.find:focus-within{border-color:var(--blue)}
+.find svg{flex:none;width:15px;height:15px}
+.find input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--paper);font-size:15px}
+.find input::placeholder{color:var(--faint)}
+.find input::-webkit-search-cancel-button{filter:invert(1);opacity:.5;cursor:pointer}
+.more{display:block;border:0;background:none;color:var(--blue);cursor:pointer;font-size:14px;padding:0;margin:0 0 18px}
+.more[hidden]{display:none}
+.more:hover{text-decoration:underline}
+.cards+.more{margin-top:-14px}
 
 /* ---------- studio ---------- */
 .ctl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 18px}
@@ -132,6 +145,8 @@ table.mx td.hot,table.mx th.hot{background:rgba(2,151,222,.1)}
 .btn:hover{border-color:var(--paper)}
 .btn.pri{background:var(--blue);border-color:var(--blue);color:var(--ink);font-weight:500}
 .btn.pri:hover{background:#28b0f2}
+.btn.alt{background:var(--orange);border-color:var(--orange)}
+.btn.alt:hover{background:#ff8c6b}
 .btn:disabled{opacity:.4;cursor:default}
 :focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 h3.sec{font-family:var(--sans);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);font-weight:400;
@@ -144,6 +159,8 @@ h3.sec span{color:var(--paper);letter-spacing:0;font-variant-numeric:tabular-num
 .flag.warn::before{background:none;border:1.5px solid var(--orange)}
 .flag.good{border-color:rgba(2,151,222,.5);background:rgba(2,151,222,.08)}
 .flag.good::before{background:var(--blue)}
+.flag.plain{border-color:var(--line);background:none;color:var(--muted);cursor:default}
+.flag.plain::before{background:var(--faint)}
 .zone{border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:4px 16px;margin-bottom:10px}
 .zone>header{display:flex;justify-content:space-between;align-items:baseline;padding:12px 0 8px;font-family:var(--serif);font-size:24px}
 .zone>header span{font-family:var(--sans);font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -203,16 +220,20 @@ body.dragging{cursor:grabbing;user-select:none}
 .chk li.warn::before{background:none;border:1.5px solid var(--orange)}
 .chk li.info::before{background:none;border:1.5px solid var(--faint)}
 details.ok summary{cursor:pointer;color:var(--faint);font-size:14px;padding:10px 0}
-.feel{display:grid;grid-template-columns:170px 1fr 34px;gap:14px;align-items:center;font-size:15px}
-.feel span{color:var(--muted)}
-.feel .bar{height:3px;background:var(--line);border-radius:2px;overflow:hidden}
-.feel .bar i{display:block;height:100%;background:var(--blue);border-radius:2px;transition:width .5s cubic-bezier(.2,.7,.2,1)}
-.feel b{font-weight:400;text-align:right;font-variant-numeric:tabular-nums}
-.formname{font-family:var(--serif);font-size:34px;margin:0 0 20px}
-
 /* ---------- ask claude ---------- */
-#ask{padding-bottom:16vh}
-.msgs{display:flex;flex-direction:column;gap:10px;margin:0 0 14px}
+#stability{padding-bottom:20vh}
+.fab{position:fixed;right:22px;bottom:22px;z-index:30;border:0;border-radius:999px;padding:12px 20px;background:var(--blue);color:var(--ink);font-weight:500;
+  cursor:pointer;box-shadow:0 12px 40px rgba(2,151,222,.35);transition:background .2s,transform .2s}
+.fab:hover{background:#28b0f2;transform:translateY(-2px)}
+.cpanel{position:fixed;right:22px;bottom:22px;z-index:31;width:min(410px,calc(100vw - 28px));max-height:min(660px,calc(100vh - 40px));display:flex;flex-direction:column;
+  background:rgba(4,13,18,.97);border:1px solid var(--line);border-radius:20px;padding:16px 16px 12px;backdrop-filter:blur(12px);box-shadow:0 24px 80px rgba(0,0,0,.6)}
+.cpanel[hidden]{display:none}
+.cpanel header{display:flex;justify-content:space-between;align-items:center;font-family:var(--serif);font-size:28px;line-height:1}
+.cpanel header button{border:0;background:none;color:var(--faint);cursor:pointer;font-size:24px;line-height:1;font-family:var(--sans)}
+.cpanel header button:hover{color:var(--orange)}
+.cpanel .note{margin:6px 0 12px}
+.cpanel #asknote{margin:10px 0 0}
+.msgs{display:flex;flex-direction:column;gap:10px;margin:0 0 14px;overflow-y:auto;flex:1;min-height:0}
 .msg{max-width:92%;padding:12px 16px;border-radius:16px;font-size:15px;white-space:pre-wrap;overflow-wrap:anywhere}
 .msg.user{align-self:flex-end;background:rgba(2,151,222,.16);border:1px solid rgba(2,151,222,.4);border-bottom-right-radius:4px}
 .msg.assistant{align-self:flex-start;background:var(--panel);border:1px solid var(--line);border-bottom-left-radius:4px}
@@ -257,7 +278,6 @@ details.ok summary{cursor:pointer;color:var(--faint);font-size:14px;padding:10px
   .row input[type=range]{grid-column:1/5;grid-row:2}
   .row .qs{grid-column:3/5}
   .read{grid-template-columns:1fr}
-  .feel{grid-template-columns:130px 1fr 34px}
 }
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
@@ -273,8 +293,7 @@ details.ok summary{cursor:pointer;color:var(--faint);font-size:14px;padding:10px
     <a href="#bench">Benchmarks</a>
     <a href="#studio">Studio</a>
     <a href="#stability">Stability</a>
-    <a href="#feel">Feel</a>
-    <a class="cta" href="#ask">Ask Claude</a>
+    <a class="cta" href="#" id="claudenav">Ask Claude</a>
   </nav>
 </div>
 
@@ -312,7 +331,7 @@ details.ok summary{cursor:pointer;color:var(--faint);font-size:14px;padding:10px
 <section id="hero">
   <h1 class="l">Every<br>formula,</h1>
   <h1 class="r"><em>layer<br>by layer.</em></h1>
-  <p class="sub">Pick your benchmark products, get a starting formulation, then shape it in the bottle. Oil phase on top, water in the middle, cool-down additions at the bottom.</p>
+  <p class="sub">Pick your benchmark products, ask for a starting formulation or build your own, then shape it in the bottle. Oil phase on top, water in the middle, cool-down additions at the bottom.</p>
   <div class="cue"><i></i>Scroll</div>
 </section>
 
@@ -321,9 +340,12 @@ details.ok summary{cursor:pointer;color:var(--faint);font-size:14px;padding:10px
     <div class="reveal">
       <div class="eyebrow"><b>01</b> &nbsp;Start here</div>
       <h2>Choose your <em>benchmarks</em></h2>
-      <p class="lead">Tick the products you want to learn from. The bottle refills with a starting formulation each time you change the selection.</p>
+      <p class="lead">Search for a product and tick the ones you want to learn from. The table below grows with every benchmark you tick.</p>
+      <label class="find"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="7" cy="7" r="5"/><path d="M11 11l4 4" stroke-linecap="round"/></svg>
+        <input id="benchq" type="search" placeholder="Search benchmark products" aria-label="Search benchmark products"><span id="benchcount"></span></label>
       <div class="cards" id="cards"></div>
-      <table class="mx" id="matrix"></table>
+      <button class="more" id="benchmore" type="button" hidden></button>
+      <div class="mxwrap"><table class="mx" id="matrix"></table></div>
       <p class="note" id="benchnote"></p>
     </div>
   </section>
@@ -332,27 +354,34 @@ details.ok summary{cursor:pointer;color:var(--faint);font-size:14px;padding:10px
     <div class="reveal">
       <div class="eyebrow"><b>02</b> &nbsp;Studio</div>
       <h2>Make it <em>yours</em></h2>
-      <p class="lead">Drag an ingredient onto the bottle. Pull a layer out to remove it. Slide to change an amount. The bottle pours as you go.</p>
+      <p class="lead">Ask for a suggestion, or build your own: drag an ingredient onto the bottle, pull a layer out to remove it, slide to change an amount. The bottle pours as you go.</p>
       <div class="ctl">
         <div class="seg" role="group" aria-label="Product type">
           <button type="button" data-pt="Leave-on">Leave-on</button><button type="button" data-pt="Rinse-off">Rinse-off</button>
         </div>
-        <label class="ph">Target pH <input id="ph" type="number" min="3" max="9" step="0.1"></label>
-        <button class="btn" id="reset" type="button">Back to benchmark start</button>
+        <button class="btn pri" id="suggest" type="button">Suggest a formulation</button>
+        <button class="btn" id="fill" type="button">Fill the gaps</button>
+        <button class="btn" id="clear" type="button">Empty the bottle</button>
+        <button class="btn" id="undo" type="button" disabled>Undo</button>
       </div>
+      <p class="hint" id="sugghint" style="margin:-6px 0 16px"></p>
       <div class="flags" id="flags"></div>
 
-      <h3 class="sec">Ingredient shelf</h3>
+      <h3 class="sec">Ingredient shelf <span id="shelfcount"></span></h3>
+      <label class="find"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="7" cy="7" r="5"/><path d="M11 11l4 4" stroke-linecap="round"/></svg>
+        <input id="shelfq" type="search" placeholder="Search ingredients by name or what they do" aria-label="Search ingredients"></label>
       <div class="shelf" id="shelf"></div>
-      <p class="hint">Drag onto the bottle, or tap to add. Blue dots show how many of your chosen benchmarks contain it.</p>
+      <button class="more" id="shelfmore" type="button" style="margin-top:12px" hidden></button>
+      <p class="hint">Drag onto the bottle, or tap to add. Blue dots show how many of your ticked benchmarks contain it.</p>
 
       <h3 class="sec">In the bottle <span id="total"></span></h3>
       <div id="zones"></div>
       <div class="ctl" style="margin-top:18px">
-        <button class="btn pri" id="send" type="button">Send to Formula A</button>
+        <button class="btn pri" data-send="A" type="button">Send to Formula A</button>
+        <button class="btn pri alt" data-send="B" type="button">Send to Formula B</button>
         <button class="btn" id="copy" type="button">Copy formula</button>
       </div>
-      <p class="hint">Formula A is on the Formulation page, where you can compare it with Formula B and check each country's rules.</p>
+      <p class="hint">Formulas A and B live on the Formulation page, where you can compare them side by side, read their predicted feel and check each country's rules. <a href="#" id="goform">Open the Formulation page</a></p>
     </div>
   </section>
 
@@ -369,161 +398,56 @@ details.ok summary{cursor:pointer;color:var(--faint);font-size:14px;padding:10px
       <p class="note">These are predictions from formulation theory, not test results. Make a real batch and test it.</p>
     </div>
   </section>
-
-  <section class="block" id="feel">
-    <div class="reveal">
-      <div class="eyebrow"><b>04</b> &nbsp;Predicted feel</div>
-      <h2>How it <em>feels</em></h2>
-      <p class="lead">Each ingredient carries a sensory score. Score times amount gives the predicted feel on a 0 to 10 scale.</p>
-      <p class="formname" id="form"></p>
-      <div class="feel" id="feelbars"></div>
-    </div>
-  </section>
-
-  <section class="block" id="ask">
-    <div class="reveal">
-      <div class="eyebrow"><b>05</b> &nbsp;Ask</div>
-      <h2>Ask <em>Claude</em></h2>
-      <p class="lead">Ask anything about the formulation in the bottle. Claude sees the current ingredients, amounts, stability checks and predicted feel.</p>
-      <div class="msgs" id="msgs"></div>
-      <div class="sugg" id="sugg">
-        <button type="button">What should I change first?</button>
-        <button type="button">How can I make it feel lighter?</button>
-        <button type="button">Explain my stability score</button>
-      </div>
-      <form class="askbox" id="askform">
-        <textarea id="q" rows="1" maxlength="2000" placeholder="Ask about this formulation" aria-label="Your question"></textarea>
-        <button class="btn pri" id="asksend" type="submit">Ask</button>
-      </form>
-      <p class="note" id="asknote">Claude's answers are guidance, not a substitute for stability, safety and challenge testing.</p>
-    </div>
-  </section>
 </div>
+
+<button class="fab" id="claudebtn" type="button" aria-expanded="false" aria-controls="claude">Ask Claude</button>
+<aside class="cpanel" id="claude" aria-label="Ask Claude" hidden>
+  <header><span>Ask <em>Claude</em></span><button type="button" id="claudex" aria-label="Close">×</button></header>
+  <p class="note">Claude sees the formulation in the bottle: its ingredients, amounts and stability checks.</p>
+  <div class="msgs" id="msgs"></div>
+  <div class="sugg" id="sugg">
+    <button type="button">What should I change first?</button>
+    <button type="button">How can I make it feel lighter?</button>
+    <button type="button">Explain my stability score</button>
+  </div>
+  <form class="askbox" id="askform">
+    <textarea id="q" rows="1" maxlength="2000" placeholder="Ask about this formulation" aria-label="Your question"></textarea>
+    <button class="btn pri" id="asksend" type="submit">Ask</button>
+  </form>
+  <p class="note" id="asknote"></p>
+</aside>
 
 <div id="tip"></div>
 <div id="toast" role="status"></div>
 
 <script>window.__DATA__ = /*__DATA__*/null;</script>
+<script src="fx_shared.js"></script>
 <script>
 (async function () {
 "use strict";
-const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
-const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
-const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
-const fmt = n => n == null ? "–" : (Math.abs(n) < 0.01 && n !== 0 ? n.toFixed(4) : n.toFixed(2)).replace(/\.?0+$/, "");
+const {$, $$, esc, clamp, fmt} = FX;
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-// ============================================================
-// LINK TO STREAMLIT (page_studio.py). The page also works opened on its own, without the link:
-// then it reads the CSV files itself, and "Send to Formula A" and "Ask Claude" are switched off.
-// ============================================================
-// Outgoing: the page types a small JSON message into a hidden Streamlit text box ("studio-inbox").
-// Incoming: Streamlit writes its reply into a hidden element ("fx-outbox"), which the page re-reads a few times a second.
-const bridge = {on: false, claude: false, chat: [], ack: null, raw: null, onUpdate: () => {}};
-const host = () => { try { return window.parent !== window ? window.parent : null; } catch (e) { return null; } };
-const inbox = () => { try { return host().document.querySelector('input[aria-label="studio-inbox"]'); } catch (e) { return null; } };
-function readOutbox() {
-  let el = null;
-  try { el = host().document.getElementById("fx-outbox"); } catch (e) {}
-  bridge.on = !!(el && inbox());
-  const raw = el ? el.textContent.trim() : null;
-  if (raw === bridge.raw) return;
-  const firstRead = bridge.raw === null; bridge.raw = raw;
-  if (!raw) return bridge.onUpdate(null);
-  try {
-    const a = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(raw), c => c.charCodeAt(0))));
-    const fresh = !firstRead && a.ack && (!bridge.ack || a.ack.id !== bridge.ack.id);
-    bridge.claude = !!a.claude; bridge.chat = a.chat || []; bridge.ack = a.ack || bridge.ack;
-    bridge.onUpdate(fresh ? a.ack : null);
-  } catch (e) {}
-}
-function emit(type, payload) {
-  const el = inbox(), w = host();
-  if (!el) return false;
-  const value = JSON.stringify({id: Date.now() + "-" + Math.random().toString(36).slice(2, 8), type, ...payload});
-  Object.getOwnPropertyDescriptor(w.HTMLInputElement.prototype, "value").set.call(el, value);
-  el.dispatchEvent(new w.Event("input", {bubbles: true}));
-  // Streamlit takes a text box's value when Enter is pressed or the box loses focus
-  for (const name of ["keydown", "keypress", "keyup"]) el.dispatchEvent(new w.KeyboardEvent(name, {key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true}));
-  el.dispatchEvent(new w.FocusEvent("focusout", {bubbles: true}));
-  return true;
-}
-
-// ============================================================
-// DATA
-// ============================================================
-function parseCSV(text) {
-  const rows = []; let row = [], cell = "", q = false;
-  text = text.replace(/^﻿/, "");
-  for (let k = 0; k < text.length; k++) {
-    const c = text[k];
-    if (q) { if (c === '"') { if (text[k + 1] === '"') { cell += '"'; k++; } else q = false; } else cell += c; }
-    else if (c === '"') q = true;
-    else if (c === ",") { row.push(cell); cell = ""; }
-    else if (c === "\n" || c === "\r") { if (c === "\r" && text[k + 1] === "\n") k++; row.push(cell); cell = ""; if (row.some(x => x !== "")) rows.push(row); row = []; }
-    else cell += c;
-  }
-  if (cell !== "" || row.length) { row.push(cell); rows.push(row); }
-  const head = rows.shift();
-  return rows.map(r => Object.fromEntries(head.map((h, n) => [h, r[n] ?? ""])));
-}
-let DATA = window.__DATA__;
-if (!DATA) {
-  const get = async f => parseCSV(await (await fetch("./" + f, {cache: "no-store"})).text());
-  DATA = {ingredients: await get("ingredients.csv"), products: await get("products.csv"), regulations: await get("regulations.csv")};
-}
-const NUM = ["min", "typ", "max", "rhlb", "hlb", "ph_min", "ph_max", "spread", "grease", "tack", "body", "film", "dry"];
-const num = v => v === "" || v == null ? null : Number(v);
-const INGS = DATA.ingredients.map(r => {
-  const i = {...r};
-  NUM.forEach(k => { i[k] = num(i[k]); });
-  i.qs = !!num(r.qs); i.unsaturated = !!num(r.unsaturated);
-  i.products = (r.products || "").split(";").filter(Boolean);
-  // where it sits in the bottle: oil on top, water in the middle, cool-down additions at the bottom
-  i.zone = (i.cat === "Preservative" || i.cat === "pH adjuster" || i.phase === "Cool-down") ? "cool" : i.phase === "Oil" ? "oil" : "water";
-  return i;
-});
-const ING = Object.fromEntries(INGS.map(i => [i.id, i]));
-const PRODUCTS = DATA.products;
-const CODES = PRODUCTS.map(p => p.code);
-const REGS = DATA.regulations.map(r => ({...r, limit: num(r.limit)}));
-const ZONES = {oil: "Oil phase", water: "Water phase", cool: "Cool-down"};
-const PALETTE = {
-  oil: ["#F2FAFE", "#CDEBFA", "#A5DBF6", "#7FCBF2", "#DDF2FC", "#B9E3F8", "#92D3F4", "#6CC3F0"],
-  water: ["#0297DE", "#0277B0", "#03A9F4", "#015F8C", "#0288C8"],
-  cool: ["#FC734D", "#FFA588", "#E2552E", "#FFC4B0", "#F58A6A"],
-};
-INGS.forEach(i => { const peers = INGS.filter(x => x.zone === i.zone); i.color = PALETTE[i.zone][peers.indexOf(i) % PALETTE[i.zone].length]; });
+// The link to Streamlit (page_studio.py). Opened on its own, the page reads the CSV files itself,
+// and "Send to Formula" and "Ask Claude" are switched off.
+const bridge = FX.bridge("studio-inbox", "fx-outbox");
+const D = FX.prepare(await FX.loadData());
+const {INGS, ING, PRODUCTS, CODES, ZONES} = D;
 
 // ============================================================
 // STARTING FORMULA, read from the benchmark products that are ticked
 // ============================================================
-function emulsifierLevels(a) {
-  const oilIds = Object.keys(a).filter(i => ING[i].phase === "Oil" && ING[i].cat !== "Emulsifier");
-  const emIds = Object.keys(a).filter(i => ING[i].cat === "Emulsifier");
-  const oil = oilIds.reduce((s, i) => s + a[i], 0);
-  const known = oilIds.filter(i => ING[i].rhlb != null);
-  const kt = known.reduce((s, i) => s + a[i], 0);
-  const rhlb = kt ? known.reduce((s, i) => s + ING[i].rhlb * a[i], 0) / kt : 10;
-  let share = Object.fromEntries(emIds.map(i => [i, 1 / emIds.length]));
-  if (emIds.length === 2) {
-    const [x, y] = emIds.map(i => ING[i]);
-    if (x.hlb !== y.hlb) { const s = clamp((rhlb - y.hlb) / (x.hlb - y.hlb), .3, .7); share = {[x.id]: s, [y.id]: 1 - s}; }
-  }
-  emIds.forEach(i => { a[i] = Math.round(clamp(share[i] * 0.22 * oil, ING[i].min, ING[i].max) * 10) / 10; });
-}
-const allowed = (id, ptype) => !REGS.some(r => r.ingredient === id && r.rule === "prohibited" && ["Both", ptype].includes(r.applies_to));
 function benchmarkStart(codes) {
   const n = codes.length, a = {};
   const count = i => i.products.filter(c => codes.includes(c)).length;
   const chosen = PRODUCTS.filter(p => codes.includes(p.code));
   const ptype = chosen.length && chosen.every(p => /rinse/i.test(p.type)) ? "Rinse-off" : "Leave-on";
   // 1. everything found in more than half of the chosen benchmarks
-  INGS.filter(i => i.id !== "aqua" && count(i) * 2 > n && allowed(i.id, ptype)).forEach(i => { a[i.id] = i.typ; });
+  INGS.filter(i => i.id !== "aqua" && count(i) * 2 > n && D.allowed(i.id, ptype)).forEach(i => { a[i.id] = i.typ; });
   if (a.cetstear != null && a.cetearyl != null) delete a.cetstear;          // the same material twice
   // 2. top up to a workable emulsion with the next most common oils and emulsifier
   const oilTotal = () => Object.keys(a).filter(i => ING[i].phase === "Oil" && ING[i].cat !== "Emulsifier").reduce((s, i) => s + a[i], 0);
-  const byCount = (cats, any) => INGS.filter(i => cats.includes(i.cat) && a[i.id] == null && (any || count(i) > 0) && allowed(i.id, ptype))
+  const byCount = (cats, any) => INGS.filter(i => cats.includes(i.cat) && a[i.id] == null && (any || count(i) > 0) && D.allowed(i.id, ptype))
     .sort((x, y) => count(y) - count(x) || y.products.length - x.products.length);
   for (const i of byCount(["Emollient", "Butter"])) { if (oilTotal() >= 10) break; a[i.id] = i.typ; }
   const has = cat => Object.keys(a).some(i => ING[i].cat === cat);
@@ -531,98 +455,19 @@ function benchmarkStart(codes) {
   // 3. safety: a preservative the product type allows, and an antioxidant when an oil can go rancid
   if (!has("Preservative")) { const p = byCount(["Preservative"], true)[0]; if (p) a[p.id] = p.typ; }
   if (!has("Antioxidant") && Object.keys(a).some(i => ING[i].unsaturated)) { const x = byCount(["Antioxidant"], true)[0]; if (x) a[x.id] = x.typ; }
-  emulsifierLevels(a);
-  return {amounts: a, ptype, ph: 5.5, bench: [...codes]};
+  D.emulsifierLevels(a);
+  return {amounts: a, ptype};
 }
 
-let S;
-try { S = JSON.parse(localStorage.getItem("fx-studio-v2")); } catch (e) {}
-if (!S || !S.amounts || !Array.isArray(S.bench) || !S.bench.length || S.bench.some(c => !CODES.includes(c)) || Object.keys(S.amounts).some(i => !ING[i] || i === "aqua")) S = benchmarkStart(CODES);
-const save = () => { try { localStorage.setItem("fx-studio-v2", JSON.stringify(S)); } catch (e) {} };
+// The bottle starts with water only and no benchmark ticked: suggestions are asked for, not imposed.
+let S, undo = null;
+try { S = JSON.parse(localStorage.getItem("fx-studio-v3")); } catch (e) {}
+if (!S || !S.amounts || !Array.isArray(S.bench) || S.bench.some(c => !CODES.includes(c)) || Object.keys(S.amounts).some(i => !ING[i] || i === "aqua")) S = {amounts: {}, ptype: "Leave-on", bench: []};
+if (S.ptype !== "Rinse-off") S.ptype = "Leave-on";
+const save = () => { try { localStorage.setItem("fx-studio-v3", JSON.stringify(S)); } catch (e) {} };
 const cnt = i => i.products.filter(c => S.bench.includes(c)).length;
 const water = () => 100 - Object.values(S.amounts).reduce((s, p) => s + p, 0);
-const items = () => [{...ING.aqua, pct: water()}, ...INGS.filter(i => S.amounts[i.id] != null).map(i => ({...i, pct: S.amounts[i.id]}))];
-
-// ============================================================
-// THEORY: the same stability and sensory rules as core.py
-// ============================================================
-function analyse(it, ptype, ph) {
-  const checks = [], add = (l, t, d) => checks.push({l, t, d});
-  if (it.length === 1) return {checks: [{l: "info", t: "The bottle holds only water", d: "Drag an ingredient from the shelf onto the bottle."}], score: null};
-  const w = it[0].pct, sum = (xs) => xs.reduce((s, i) => s + i.pct, 0);
-  const oils = it.filter(i => i.phase === "Oil" && i.cat !== "Emulsifier"), emuls = it.filter(i => i.cat === "Emulsifier");
-  const fatty = it.filter(i => i.cat === "Fatty alcohol"), pres = it.filter(i => i.cat === "Preservative");
-  const oilT = sum(oils), emT = sum(emuls), fatT = sum(fatty), ids = it.map(i => i.id);
-  if (w < 0) add("high", "Over 100%", `Non-water ingredients add up to ${fmt(100 - w)}%. Reduce some amounts.`);
-  else if (w < 50) add("warn", "Low water content", `Water is only ${fmt(w)}%. Very low water can make an O/W emulsion too thick or flip it to W/O.`);
-  else add("ok", "Total = 100%", `Water q.s. to ${fmt(w)}%.`);
-  it.slice(1).forEach(i => {
-    if (i.qs || i.min == null) return;
-    if (i.pct > i.max) add("high", `${i.short} above usual maximum`, `${fmt(i.pct)}% is above the usual ${fmt(i.max)}%.`);
-    else if (i.pct < i.min) add("warn", `${i.short} below usual level`, `${fmt(i.pct)}% may be too little to work (usual ${fmt(i.min)}–${fmt(i.max)}%).`);
-  });
-  if (oilT > 0 && !emuls.length) add("high", "No emulsifier", "Oil and water will separate. Add an emulsifier.");
-  else if (oilT > 0) {
-    const r = emT / oilT, txt = `Emulsifier is ${(r * 100).toFixed(0)}% of the oil phase (rule of thumb: about 15–30%).`;
-    if (r < .10) add("high", "Too little emulsifier for the oil load", txt);
-    else if (r < .15) add("warn", "Emulsifier on the low side", txt);
-    else if (r > .40) add("warn", "Excess emulsifier", txt + " Too much can feel soapy or tacky.");
-    else add("ok", "Emulsifier amount OK", txt);
-  }
-  const known = oils.filter(i => i.rhlb != null && i.pct > 0), unknown = oils.filter(i => i.rhlb == null && i.pct > 0);
-  if (known.length && emuls.length && emT > 0) {
-    const r = known.reduce((s, i) => s + i.rhlb * i.pct, 0) / sum(known), b = emuls.reduce((s, i) => s + i.hlb * i.pct, 0) / emT, d = Math.abs(r - b);
-    add(d <= 1.5 ? "ok" : d <= 3 ? "warn" : "high", d <= 1.5 ? "HLB matched" : d <= 3 ? "HLB slightly off" : "HLB mismatch",
-      `Oil phase needs HLB ≈ ${r.toFixed(1)}; the emulsifier blend gives ≈ ${b.toFixed(1)}. Indicative only.`);
-  }
-  if (unknown.length) add("info", "Missing required-HLB data", `${unknown.map(i => i.short).join(", ")} left out of the HLB calculation. Add the value from the supplier TDS.`);
-  if (oilT > 0) {
-    if (oilT < 5) add("warn", "Very light oil phase", `Oil phase ${fmt(oilT)}%: likely a thin, watery lotion.`);
-    else if (oilT > 40) add("high", "Oil phase very high", `Oil phase ${fmt(oilT)}% is hard to keep stable as O/W.`);
-    else if (oilT > 30) add("warn", "Rich oil phase", `Oil phase ${fmt(oilT)}%: needs a strong emulsifier system.`);
-    else add("ok", "Oil phase in lotion range", `Oil phase ${fmt(oilT)}% (typical 10–30%).`);
-  }
-  if (oilT > 0 && fatT === 0) add("warn", "No fatty alcohol", "Without a thickener such as cetearyl alcohol the lotion stays thin and droplets can cream over time.");
-  else if (fatT > 7) add("warn", "High fatty alcohol", `${fmt(fatT)}% may feel waxy and keep thickening during storage.`);
-  if (ids.includes("cetstear") && ids.includes("cetearyl")) add("warn", "Duplicate ingredient", "Cetyl/Stearyl Alcohol and Cetearyl Alcohol are the same material. Keep only one.");
-  it.forEach(i => { if (i.id === "shea" && i.pct > 5) add("warn", "Graininess risk", `Shea butter at ${fmt(i.pct)}% can form crystals. Cool the batch quickly while stirring.`); });
-  const unsat = it.filter(i => i.unsaturated && i.pct > 0);
-  if (unsat.length && !it.some(i => i.cat === "Antioxidant" && i.pct > 0)) add("warn", "Rancidity risk", `${unsat.map(i => i.short).join(" and ")} can oxidise. Add an antioxidant such as tocopherol (0.1–0.5%).`);
-  else if (unsat.length) add("ok", "Oils protected from rancidity", "An antioxidant is present alongside the unsaturated oils.");
-  if (!pres.length) add("high", "No preservative", "Any water-based product will grow microbes. Add a preservative system.");
-  if (ids.includes("mit") && pres.length === 1) add("warn", "Weak against yeast and mould", "MIT alone has poor antifungal activity. A second preservative is usually needed.");
-  if (ids.includes("tapioca") && pres.length) add("info", "Starch raises microbial load", "Check preservative efficacy with a challenge test.");
-  it.forEach(i => { if (i.ph_min != null && !(i.ph_min <= ph && ph <= i.ph_max)) add("warn", `pH outside ${i.short} range`, `Target pH ${ph}; ${i.short} works best at pH ${fmt(i.ph_min)}–${fmt(i.ph_max)}.`); });
-  if (ids.includes("naoh") && !it.some(i => i.cat === "Acid / polymer")) add("info", "NaOH may not be needed", "Nothing acidic is in the formula yet. Add NaOH only if the measured pH is below target.");
-  const ch = new Set(it.map(i => i.charge));
-  if (ch.has("anionic") && ch.has("cationic")) add("high", "Charge incompatibility", "Anionic and cationic ingredients can react and destabilise the emulsion.");
-  let score = 100 - 20 * checks.filter(c => c.l === "high").length - 7 * checks.filter(c => c.l === "warn").length;
-  if (w < 0) score = 0;
-  // rules on file (regulations.csv): shown, but not part of the stability score
-  const hits = {};
-  REGS.forEach(r => {
-    const i = it.find(x => x.id === r.ingredient && x.pct > 0);
-    if (!i || !["Both", ptype].includes(r.applies_to)) return;
-    const bad = r.rule === "prohibited" ? `${i.short} is not allowed in ${ptype.toLowerCase()} products`
-      : r.rule === "max_pct" && i.pct > r.limit ? `${i.short} is above the legal limit of ${fmt(r.limit)}%`
-      : r.rule === "max_ph" && ph >= r.limit ? `Target pH must stay below ${fmt(r.limit)} for ${i.short}` : null;
-    if (bad) (hits[bad] = hits[bad] || []).push(r.country);
-  });
-  Object.entries(hits).forEach(([t, cs]) => checks.push({l: "high", rule: true, t, d: `Rule on file for ${[...new Set(cs)].join(", ")}.`}));
-  return {checks, score: clamp(score, 0, 100)};
-}
-const SENSES = {body: ["Body", 20], spread: ["Spreadability", 0], absorb: ["Absorption speed", 0], grease: ["Greasiness", 30], tack: ["Tackiness", 24], dry: ["Dry, powdery finish", 40], film: ["Skin film", 35]};
-function sensory(it) {
-  const known = it.slice(1).filter(i => i.body != null && i.pct > 0);
-  if (!known.length) return null;
-  const out = {};
-  for (const [k, [, mid]] of Object.entries(SENSES)) if (mid) { const load = Math.max(0, known.reduce((s, i) => s + i[k] * i.pct, 0)); out[k] = 10 * load / (load + mid); }
-  const sp = known.filter(i => i.spread != null);
-  out.spread = sp.length ? clamp(2 * sp.reduce((s, i) => s + i.spread * i.pct, 0) / sp.reduce((s, i) => s + i.pct, 0) - .3 * Math.max(0, out.body - 5), 0, 10) : null;
-  out.absorb = clamp(10 - .6 * out.grease - .4 * out.film, 0, 10);
-  return out;
-}
-const formOf = s => !s ? "" : s.body < 3 ? "Milk or serum" : s.body < 6 ? "Lotion" : s.body < 8 ? "Cream" : "Rich cream or butter";
+const items = () => D.itemsOf(S.amounts);
 
 // ============================================================
 // THE BOTTLE: layers ease toward their target every frame
@@ -720,23 +565,30 @@ function frame(now) {
 // ============================================================
 // PANELS
 // ============================================================
-const dots = i => `<span class="dots" title="In ${cnt(i)} of ${S.bench.length} chosen benchmarks">${S.bench.map((p, n) => `<i class="${n < cnt(i) ? "on" : ""}"></i>`).join("")}</span>`;
+const dots = i => S.bench.length ? `<span class="dots" title="In ${cnt(i)} of ${S.bench.length} ticked benchmarks">${S.bench.map((p, n) => `<i class="${n < cnt(i) ? "on" : ""}"></i>`).join("")}</span>` : "";
 const sw = i => `<span class="sw" style="background:${i.color}"></span>`;
 const stepFor = i => i.max != null && i.max < 0.01 ? 0.0001 : i.max != null && i.max <= 1 ? 0.05 : 0.1;
 const sliderMax = i => i.max == null ? 10 : i.max < 0.01 ? i.max * 2 : i.max <= 1 ? i.max * 2 : Math.ceil(i.max * 1.5);
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+const LONG = 9;      // a longer list of benchmarks is cut short until you search or ask for all of it
+const SHELF = 18;    // the same for the ingredient shelf
 
-// 01 benchmarks: tick products, and the starting formula follows
+// 01 benchmarks: search, tick, and the table grows with each tick
+let benchQ = "", benchAll = false;
 function buildCards() {
-  $("#cards").innerHTML = PRODUCTS.map((p, n) => `<div class="card" role="checkbox" tabindex="0" aria-checked="${S.bench.includes(p.code)}" data-code="${esc(p.code)}">
-    <span class="tick">✓</span><span class="k">${String(n + 1).padStart(2, "0")}</span><b>${esc(p.name)}</b><small>${esc(p.type)}</small>
-    <a href="${esc(p.url)}" target="_blank" rel="noopener">Ingredient list ↗</a></div>`).join("");
+  const q = benchQ.trim().toLowerCase(), ticked = p => S.bench.includes(p.code);
+  let list = PRODUCTS.filter(p => ticked(p) || !q || (p.name + " " + p.type).toLowerCase().includes(q));
+  const cutShort = !q && !benchAll && list.length > LONG;
+  if (cutShort) list = [...list.filter(ticked), ...list.filter(p => !ticked(p))].slice(0, LONG);
+  $("#cards").innerHTML = list.map(p => `<div class="card" role="checkbox" tabindex="0" aria-checked="${ticked(p)}" data-code="${esc(p.code)}">
+    <span class="tick">✓</span><span class="k">${esc(p.type)}</span><b>${esc(p.name)}</b>
+    <a href="${esc(p.url)}" target="_blank" rel="noopener">Ingredient list ↗</a></div>`).join("") || `<p class="hint">No benchmark matches “${esc(benchQ)}”.</p>`;
+  $("#benchmore").hidden = !cutShort; $("#benchmore").textContent = `Show all ${PRODUCTS.length} benchmarks`;
   $$(".card").forEach(c => {
     const code = c.dataset.code;
     const toggle = () => {
-      const next = S.bench.includes(code) ? S.bench.filter(x => x !== code) : CODES.filter(x => x === code || S.bench.includes(x));
-      if (!next.length) return toast("Keep at least one benchmark ticked");
-      S = benchmarkStart(next); phEl.value = S.ph; rebuild();
-      toast(`Starting formula from ${next.length} benchmark${next.length > 1 ? "s" : ""}`);
+      S.bench = S.bench.includes(code) ? S.bench.filter(x => x !== code) : [...S.bench, code];
+      buildMatrix(); buildShelf(); refresh();
     };
     c.addEventListener("click", e => { if (!e.target.closest("a")) toggle(); });
     c.addEventListener("keydown", e => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggle(); } });
@@ -745,30 +597,46 @@ function buildCards() {
     c.addEventListener("pointerenter", on); c.addEventListener("pointerleave", off);
   });
 }
+$("#benchq").addEventListener("input", e => { benchQ = e.target.value; buildCards(); });
+$("#benchmore").addEventListener("click", () => { benchAll = true; buildCards(); });
 function buildMatrix() {
   $$(".card").forEach(c => c.setAttribute("aria-checked", S.bench.includes(c.dataset.code)));
-  const rows = INGS.filter(i => i.products.length || S.amounts[i.id] != null).sort((a, b) => cnt(b) - cnt(a) || b.products.length - a.products.length);
-  const dim = p => S.bench.includes(p.code) ? "" : "dim";
-  $("#matrix").innerHTML = `<tr><th>Ingredient</th>${PRODUCTS.map((p, n) => `<th class="${dim(p)}" data-code="${esc(p.code)}">${String(n + 1).padStart(2, "0")}</th>`).join("")}<th></th></tr>` +
+  $("#benchcount").textContent = S.bench.length ? `${S.bench.length} ticked` : "";
+  const cols = S.bench.map(c => PRODUCTS.find(p => p.code === c));
+  if (!cols.length) {
+    $("#matrix").innerHTML = "";
+    $("#benchnote").textContent = "No benchmark ticked yet. Tick one and its ingredients appear here. You can also skip this step and build your own formulation below.";
+    return;
+  }
+  // one column per ticked benchmark, in the order you ticked them, and one row per ingredient any of them lists
+  const rows = INGS.filter(i => cnt(i) > 0).sort((a, b) => cnt(b) - cnt(a) || b.products.length - a.products.length);
+  $("#matrix").innerHTML = `<tr><th>Ingredient</th>${cols.map(p => `<th data-code="${esc(p.code)}" title="${esc(p.name)}">${esc(p.name.split(/\s+/)[0])}</th>`).join("")}<th>In</th></tr>` +
     rows.map(i => `<tr class="${i.id === "aqua" || S.amounts[i.id] != null ? "in" : ""}" data-id="${i.id}"><td>${esc(i.short)}</td>${
-      PRODUCTS.map(p => `<td class="${dim(p)}" data-code="${esc(p.code)}"><i class="${i.products.includes(p.code) ? "on" : ""}"></i></td>`).join("")}<td>${cnt(i)}/${S.bench.length}</td></tr>`).join("");
+      cols.map(p => `<td data-code="${esc(p.code)}"><i class="${i.products.includes(p.code) ? "on" : ""}"></i></td>`).join("")}<td>${cnt(i)}/${cols.length}</td></tr>`).join("");
   $$("#matrix tr[data-id]").forEach(tr => { tr.addEventListener("pointerenter", () => { hot = new Set([tr.dataset.id]); }); tr.addEventListener("pointerleave", () => { hot = null; }); });
-  const extra = INGS.filter(i => S.amounts[i.id] != null && cnt(i) === 0).map(i => i.short);
-  $("#benchnote").textContent = "● in the bottle now. The start keeps every ingredient found in more than half of the ticked benchmarks, then tops up the oil phase with the next most common oils. " +
-    "Benchmarks list ingredients, not amounts, so levels start at each ingredient's typical use level." +
-    (extra.length ? ` Added for safety although no ticked benchmark lists it: ${extra.join(", ")}.` : "");
+  $("#benchnote").textContent = "● in the bottle now. “Suggest a formulation” in the next section keeps every ingredient found in more than half of the ticked benchmarks, " +
+    "then tops up the oil phase with the next most common oils. Benchmarks list ingredients, not amounts, so levels start at each ingredient's typical use level.";
 }
 // 02 studio
+let shelfQ = "", shelfAll = false;
 function buildShelf() {
-  const out = INGS.filter(i => i.id !== "aqua" && S.amounts[i.id] == null);
+  const q = shelfQ.trim().toLowerCase();
+  const all = INGS.filter(i => i.id !== "aqua" && S.amounts[i.id] == null);
+  let out = all.filter(i => !q || [i.short, i.inci, i.func, i.cat, ...i.roles].join(" ").toLowerCase().includes(q)).sort((a, b) => cnt(b) - cnt(a));
+  const cutShort = !q && !shelfAll && out.length > SHELF;
+  if (cutShort) out = out.slice(0, SHELF);
+  $("#shelfcount").textContent = q ? `${out.length} of ${all.length}` : `${all.length}`;
   $("#shelf").innerHTML = out.length ? out.map(i => `<div class="chip" role="button" tabindex="0" data-id="${i.id}" aria-label="Add ${esc(i.short)} to the bottle">${sw(i)}${esc(i.short)}${dots(i)}</div>`).join("")
-    : `<span class="hint">Everything in your library is in the bottle.</span>`;
+    : `<span class="hint">${all.length ? `No ingredient matches “${esc(shelfQ)}”.` : "Everything in your library is in the bottle."}</span>`;
+  $("#shelfmore").hidden = !cutShort; $("#shelfmore").textContent = `Show all ${all.length} ingredients`;
   $$("#shelf .chip").forEach(c => {
     c.addEventListener("pointerdown", e => drag(e, c.dataset.id, "add"));
     c.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); addIng(c.dataset.id); } });
     tipOn(c, c.dataset.id);
   });
 }
+$("#shelfq").addEventListener("input", e => { shelfQ = e.target.value; buildShelf(); });
+$("#shelfmore").addEventListener("click", () => { shelfAll = true; buildShelf(); });
 function buildRows() {
   const it = items();
   $("#zones").innerHTML = Object.entries(ZONES).map(([z, label]) => {
@@ -780,7 +648,7 @@ function buildRows() {
         <label class="num"><input type="number" min="0" max="100" step="${stepFor(i)}" value="${fmt(i.pct)}" aria-label="${esc(i.short)} percent">%</label>
         <button class="rm" type="button" aria-label="Remove ${esc(i.short)}">×</button></div>`;
     }).join("");
-    return `<div class="zone" data-z="${z}"><header>${label}<span data-zt="${z}"></span></header>${rows || `<div class="none">Nothing here yet. Drag an ingredient onto the bottle.</div>`}</div>`;
+    return `<div class="zone" data-z="${z}"><header>${label}<span data-zt="${z}"></span></header>${rows || `<div class="none">Nothing here yet. Drag an ingredient onto the bottle, or press “Suggest a formulation”.</div>`}</div>`;
   }).join("");
   $$("#zones .row").forEach(r => {
     const id = r.dataset.id;
@@ -797,7 +665,7 @@ function buildRows() {
     $(".rm", r).addEventListener("click", () => removeIng(id));
   });
 }
-let lastRead = {checks: [], score: null, sense: null};
+let lastRead = {checks: [], score: null};
 function refresh() {
   const it = items(), w = it[0].pct;
   for (const z of Object.keys(ZONES)) {
@@ -810,12 +678,17 @@ function refresh() {
   $("#total").style.color = w < 0 ? "var(--orange)" : "";
   $$("#zones .row").forEach(r => { const i = ING[r.dataset.id], p = S.amounts[i.id]; r.classList.toggle("off", p != null && !i.qs && i.min != null && (p > i.max || p < i.min)); });
   $$("#matrix tr[data-id]").forEach(tr => tr.classList.toggle("in", tr.dataset.id === "aqua" || S.amounts[tr.dataset.id] != null));
-  // risk flags sit in the studio, next to the controls that fix them
-  const {checks, score} = analyse(it, S.ptype, S.ph), rank = {high: 0, warn: 1, info: 2};
+  // risk flags sit in the studio, next to the controls that fix them. There is no target pH to set:
+  // the working pH range follows from the ingredients, and is shown as a plain note.
+  const {checks, score} = D.analyse(it, S.ptype, null), rank = {high: 0, warn: 1, info: 2};
   const bad = checks.filter(c => c.l !== "ok").sort((a, b) => rank[a.l] - rank[b.l]), ok = checks.filter(c => c.l === "ok");
-  const flags = bad.filter(c => c.l !== "info");
-  $("#flags").innerHTML = flags.length ? flags.map(c => `<a class="flag ${c.l}" href="#stability" title="${esc(c.d)}">${esc(c.t)}</a>`).join("")
-    : `<a class="flag good" href="#stability">No risk flags</a>`;
+  const flags = bad.filter(c => c.l !== "info"), win = D.phWindow(it), empty = it.length === 1;
+  $("#flags").innerHTML = (empty ? "" : flags.length ? flags.map(c => `<a class="flag ${c.l}" href="#stability" title="${esc(c.d)}">${esc(c.t)}</a>`).join("")
+    : `<a class="flag good" href="#stability">No risk flags</a>`) +
+    (win ? `<span class="flag plain" title="The range in which every ingredient in the bottle works">${win[0] <= win[1] ? `Works at pH ${fmt(win[0])}–${fmt(win[1])}` : "No pH suits every ingredient"}</span>` : "");
+  $("#sugghint").textContent = S.bench.length ? `“Suggest a formulation” will use your ${plural(S.bench.length, "ticked benchmark")}. “Fill the gaps” keeps what is in the bottle and adds what is missing.`
+    : "No benchmark is ticked, so “Suggest a formulation” gives a basic lotion. Tick benchmarks above to base it on real products.";
+  $("#fill").disabled = empty; $("#clear").disabled = empty; $("#undo").disabled = !undo;
   // 03 stability
   const li = c => `<li class="${c.l}"><b>${esc(c.t)}</b>${esc(c.d)}</li>`;
   $("#checks").innerHTML = bad.map(li).join("") || `<li><b>No risks flagged</b>Every theory check passes.</li>`;
@@ -825,17 +698,12 @@ function refresh() {
   $("#scorel").textContent = score == null ? "" : illegal ? "Breaks a rule on file" : score >= 80 ? "Low predicted risk" : score >= 55 ? "Moderate risk" : "High risk";
   const rv = $("#ringv"); rv.style.strokeDashoffset = 289 * (1 - (score || 0) / 100);
   rv.style.stroke = illegal ? "var(--orange)" : score >= 80 ? "var(--blue)" : score >= 55 ? "#FFB199" : "var(--orange)";
-  // 04 feel
-  const s = sensory(it);
-  $("#feelbars").innerHTML = Object.entries(SENSES).map(([k, [label]]) => { const v = s ? s[k] : null;
-    return `<span>${label}</span><div class="bar"><i style="width:${v == null ? 0 : v * 10}%"></i></div><b>${v == null ? "–" : v.toFixed(1)}</b>`; }).join("");
-  $("#form").textContent = s ? `Reads as: ${formOf(s).toLowerCase()}` : "Add an oil or thickener to predict the feel.";
   $$(".seg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.pt === S.ptype));
-  lastRead = {checks, score, sense: s};
+  lastRead = {checks, score};
   save();
 }
 function rebuild() { buildMatrix(); buildShelf(); buildRows(); layout(); refresh(); }
-function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove("on"), 2600); }
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove("on"), 3200); }
 function addIng(id) {
   if (S.amounts[id] != null) return;
   S.amounts[id] = ING[id].typ ?? 1; rebuild();
@@ -844,10 +712,23 @@ function addIng(id) {
 }
 function removeIng(id) { if (id === "aqua" || S.amounts[id] == null) return; delete S.amounts[id]; hot = null; rebuild(); toast(`${ING[id].short} removed`); }
 function formulaText() {
-  const it = items(), lines = [`${S.ptype} product, target pH ${S.ph}`];
+  const it = items(), lines = [`${S.ptype} product`];
   for (const [z, label] of Object.entries(ZONES)) { const rows = it.filter(i => i.zone === z && i.pct > 0); if (rows.length) { lines.push("", label); rows.forEach(i => lines.push(`${i.inci}\t${fmt(i.pct)}%`)); } }
   return lines.join("\n");
 }
+// the three ways to change the whole bottle at once; each can be undone
+function replaceWith(amounts, ptype, msg) { undo = JSON.stringify(S); S.amounts = amounts; if (ptype) S.ptype = ptype; hot = null; rebuild(); toast(msg); }
+$("#suggest").addEventListener("click", () => {
+  if (S.bench.length) { const s = benchmarkStart(S.bench); replaceWith(s.amounts, s.ptype, `Starting formulation from ${plural(S.bench.length, "benchmark")}`); }
+  else { const a = {}; D.suggest(a, S.ptype, null); replaceWith(a, null, "A basic lotion to start from"); }
+});
+$("#fill").addEventListener("click", () => {
+  const a = {...S.amounts}, r = D.complete(a, S.ptype, null);
+  if (!r.added.length && !r.removed.length) return toast("Nothing is missing: the bottle already has every part of a basic emulsion.");
+  replaceWith(a, null, [r.added.length ? `Added ${D.names(r.added)}.` : "", r.removed.length ? `Removed ${D.names(r.removed)}.` : ""].join(" ").trim());
+});
+$("#clear").addEventListener("click", () => replaceWith({}, null, "Bottle emptied. Press Undo to bring it back."));
+$("#undo").addEventListener("click", () => { if (!undo) return; const back = undo; undo = JSON.stringify(S); S = JSON.parse(back); hot = null; rebuild(); toast("Undone"); });
 
 // ============================================================
 // DRAG AND DROP (pointer events, so it works with mouse, pen and touch)
@@ -888,7 +769,7 @@ gLayers.addEventListener("pointerdown", e => {
 const tip = $("#tip");
 function showTip(id, e) {
   const i = ING[id], p = id === "aqua" ? water() : S.amounts[id];
-  tip.innerHTML = `<b>${esc(i.short)}${p != null ? ` · ${fmt(p)}%` : ""}</b>${esc(i.func)}<br><u>${ZONES[i.zone]}</u> · in ${cnt(i)} of ${S.bench.length} chosen benchmarks`;
+  tip.innerHTML = `<b>${esc(i.short)}${p != null ? ` · ${fmt(p)}%` : ""}</b>${esc(i.func)}<br><u>${ZONES[i.zone]}</u>${S.bench.length ? ` · in ${cnt(i)} of ${S.bench.length} ticked benchmarks` : ""}`;
   tip.classList.add("on"); moveTip(e);
 }
 function moveTip(e) { const w = tip.offsetWidth, x = e.clientX + 18 + w > innerWidth ? e.clientX - w - 18 : e.clientX + 18; tip.style.left = x + "px"; tip.style.top = clamp(e.clientY + 14, 8, innerHeight - tip.offsetHeight - 8) + "px"; }
@@ -899,70 +780,80 @@ gLayers.addEventListener("pointerleave", () => { hideTip(); hot = null; });
 
 // controls
 $$(".seg button").forEach(b => b.addEventListener("click", () => { S.ptype = b.dataset.pt; refresh(); }));
-const phEl = $("#ph"); phEl.value = S.ph;
-phEl.addEventListener("input", () => { const v = Number(phEl.value); if (v >= 3 && v <= 9) { S.ph = v; refresh(); } });
-$("#reset").addEventListener("click", () => { S = benchmarkStart(S.bench); phEl.value = S.ph; rebuild(); toast("Back to the benchmark starting formula"); });
 $("#copy").addEventListener("click", async () => {
   const text = "Formulator Studio\n" + formulaText();
   try { await navigator.clipboard.writeText(text); }
   catch (e) { const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
   toast("Formula copied. Paste it into Excel or a message.");
 });
-$("#send").addEventListener("click", () => {
+$$("[data-send]").forEach(b => b.addEventListener("click", () => {
+  const slot = b.dataset.send;
   if (!bridge.on) return toast("Open the Studio through the Streamlit app to send formulas");
+  if (!Object.keys(S.amounts).length) return toast("The bottle holds only water. Add ingredients first.");
   if (water() < 0) return toast("The formula is over 100%. Reduce some amounts first.");
-  if (emit("send", {slot: "A", formula: {amounts: S.amounts, ptype: S.ptype, ph: S.ph}})) toast("Sending to Formula A…");
-});
+  if (bridge.emit("send", {slot, formula: {amounts: S.amounts, ptype: S.ptype}})) toast(`Sending to Formula ${slot}…`);
+}));
+$("#goform").addEventListener("click", e => { e.preventDefault(); if (!bridge.go("formulation")) toast("Use “Formulation” in the menu at the top of the page"); });
 
 // ============================================================
-// 05 ASK CLAUDE: the question goes to page_studio.py, which calls the Claude API with the key kept on the server
+// ASK CLAUDE, in the corner: the question goes to page_studio.py, which calls the Claude API with the key kept on the server
 // ============================================================
-let waiting = null;
+let waiting = null, chat = [], claudeOn = false, lastAck = null;
+const panel = $("#claude"), fab = $("#claudebtn");
+function openClaude(open) { panel.hidden = !open; fab.hidden = open; fab.setAttribute("aria-expanded", open); if (open) { renderChat(); $("#q").focus(); } }
+fab.addEventListener("click", () => openClaude(true));
+$("#claudex").addEventListener("click", () => openClaude(false));
+$("#claudenav").addEventListener("click", e => { e.preventDefault(); openClaude(true); });
+addEventListener("keydown", e => { if (e.key === "Escape" && !panel.hidden) openClaude(false); });
 function renderChat() {
-  const list = bridge.chat.slice();
+  const list = chat.slice();
   if (waiting && !list.some(m => m.q === waiting.q)) list.push({role: "user", text: waiting.text});
   else waiting = null;
-  $("#msgs").innerHTML = list.map(m => `<div class="msg ${m.role}">${esc(m.text)}</div>`).join("") + (waiting ? `<div class="msg assistant wait"><i></i><i></i><i></i>Claude is thinking</div>` : "");
+  const box = $("#msgs");
+  box.innerHTML = list.map(m => `<div class="msg ${m.role}">${esc(m.text)}</div>`).join("") + (waiting ? `<div class="msg assistant wait"><i></i><i></i><i></i>Claude is thinking</div>` : "");
+  box.scrollTop = box.scrollHeight;
   $("#asksend").disabled = !!waiting || !bridge.on;
   $("#sugg").hidden = list.length > 0;
   $("#asknote").textContent = !bridge.on ? "Ask Claude works when the Studio is opened through the Streamlit app."
-    : !bridge.claude ? "Claude is not connected yet. Add ANTHROPIC_API_KEY to the app's secrets, then reload."
+    : !claudeOn ? "Claude is not connected yet. Add ANTHROPIC_API_KEY to the app's secrets, or enter your own key with the Ask Claude button on another page."
     : "Claude's answers are guidance, not a substitute for stability, safety and challenge testing.";
 }
 function ask(text) {
   text = text.trim();
   if (!text || waiting) return;
   if (!bridge.on) return toast("Open the Studio through the Streamlit app to ask Claude");
-  const r = lastRead, s = r.sense;
-  const context = formulaText() + `\n\nBenchmarks chosen: ${PRODUCTS.filter(p => S.bench.includes(p.code)).map(p => p.name).join("; ")}` +
-    `\n\nStability score (theory): ${r.score ?? "n/a"}/100\n` + r.checks.map(c => `[${c.l}] ${c.t}: ${c.d}`).join("\n") +
-    (s ? `\n\nPredicted feel (0-10), reads as ${formOf(s)}:\n` + Object.entries(SENSES).map(([k, [label]]) => `${label}: ${s[k] == null ? "n/a" : s[k].toFixed(1)}`).join("\n") : "");
+  const r = lastRead;
+  const context = formulaText() + (S.bench.length ? `\n\nBenchmarks ticked: ${PRODUCTS.filter(p => S.bench.includes(p.code)).map(p => p.name).join("; ")}` : "") +
+    `\n\nStability score (theory): ${r.score ?? "n/a"}/100\n` + r.checks.map(c => `[${c.l}] ${c.t}: ${c.d}`).join("\n");
   waiting = {q: Date.now() + "", text};
-  if (!emit("ask", {q: waiting.q, question: text, context})) { waiting = null; return toast("Could not reach the app. Reload the page and try again."); }
+  if (!bridge.emit("ask", {q: waiting.q, question: text, context})) { waiting = null; return toast("Could not reach the app. Reload the page and try again."); }
   $("#q").value = ""; $("#q").style.height = "";
   renderChat();
-  $("#msgs").lastElementChild.scrollIntoView({behavior: "smooth", block: "nearest"});
 }
 $("#askform").addEventListener("submit", e => { e.preventDefault(); ask($("#q").value); });
 $("#q").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask($("#q").value); } });
 $("#q").addEventListener("input", e => { e.target.style.height = ""; e.target.style.height = Math.min(160, e.target.scrollHeight) + "px"; });
 $$("#sugg button").forEach(b => b.addEventListener("click", () => ask(b.textContent)));
-bridge.onUpdate = ack => { renderChat(); if (ack && ack.msg) toast(ack.msg); };
+bridge.onUpdate = (d, first) => {
+  chat = (d && d.chat) || []; claudeOn = !!(d && d.claude);
+  const ack = d && d.ack, fresh = !first && ack && ack.id !== lastAck;
+  if (ack) lastAck = ack.id;
+  renderChat();
+  if (fresh && ack.msg) toast(ack.msg);
+};
 
 // scroll: reveal sections and mark the current one in the menu
 const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) e.target.classList.add("in"); }), {threshold: .08});
 $$(".reveal").forEach(el => io.observe(el));
 const links = $$("#bar nav a");
 function onScroll() {
-  let cur = ""; ["bench", "studio", "stability", "feel", "ask"].forEach(id => { if ($("#" + id).getBoundingClientRect().top < innerHeight * .5) cur = id; });
+  let cur = ""; ["bench", "studio", "stability"].forEach(id => { if ($("#" + id).getBoundingClientRect().top < innerHeight * .5) cur = id; });
   links.forEach(a => a.classList.toggle("on", a.getAttribute("href") === "#" + cur));
 }
 addEventListener("scroll", onScroll, {passive: true});
 
 buildCards(); rebuild(); renderChat(); onScroll();
-// re-read Streamlit's reply whenever the host page changes (and on a timer, as a fallback)
-readOutbox(); setInterval(readOutbox, 400);
-try { const w = host(); if (w) new w.MutationObserver(readOutbox).observe(w.document.body, {childList: true, subtree: true, characterData: true}); } catch (e) {}
+bridge.start();
 requestAnimationFrame(frame);
 })();
 </script>
