@@ -1,31 +1,48 @@
 """Suggest page: a free optimiser that searches for formulas that meet a sensory goal and the rules of your countries."""
 import streamlit as st
 
-from core import (COUNTRIES, GOALS, ING, INGREDIENTS, SENSES, SLOTS, eligible, has_core, load_suggestion, optimise, pill,
-                  product_form, recipe_rows, table_html)
+from core import (COUNTRIES, GOALS, ING, ROLE_GROUPS, SENSES, SLOTS, eligible, has_core, load_suggestion, optimise,
+                  page_header, ph_text, pill, pool_key, product_form, recipe_rows, roles_of, section_header, table_html)
 
-st.title("Suggest formulations")
-st.caption("Finds starting formulas from the ingredients you allow. It tries thousands of combinations, scores each "
-           "with the stability, compliance and sensory theory used on the other pages, and shows the best three. "
-           "It runs inside this app, so there is no account and no cost.")
+page_header("03", "Suggest", "Find a", "starting point",
+            "Finds starting formulas from the ingredients you allow. It tries thousands of combinations, scores each "
+            "with the stability, compliance and sensory theory used on the Formulation page, and shows the best ones. "
+            "It runs inside this app, so there is no account and no cost.")
 
-all_ids = [i["id"] for i in INGREDIENTS if i["id"] != "aqua"]
-if "sg_pool" in st.session_state:  # ingredients.csv may have changed since this was saved
-    st.session_state["sg_pool"] = [i for i in st.session_state["sg_pool"] if i in all_ids]
-
-c1, c2, c3 = st.columns([1, 1, 2], gap="large")
+c1, c2, c3 = st.columns([1, 1.3, 2], gap="large")
 ptype = c1.radio("Product type", ["Leave-on", "Rinse-off"], horizontal=True, key="sg_ptype")
-ph = c2.number_input("Target pH", min_value=3.0, max_value=9.0, step=0.1, key="sg_ph")
+ph = c2.slider("Target pH range", min_value=3.0, max_value=9.0, step=0.1, key="sg_ph",
+               help="The finished product may land anywhere in this range, so every ingredient should work across it.")
 countries = c3.multiselect("Selling in (suggestions must pass these rules)", COUNTRIES, key="countries")
 
-goal = st.selectbox("Feel you want", [*GOALS, "Custom"], key="sg_goal")
+g1, g2 = st.columns([2.3, 2], gap="large")
+goal = g1.selectbox("Feel you want", [*GOALS, "Custom"], key="sg_goal")
+count = g2.slider("How many suggestions to show", min_value=1, max_value=6, key="sg_count")
 if goal == "Custom":
     cols = st.columns(len(SENSES))
     target = {k: cols[n].slider(label.split(",")[0], 0, 10, key=f"sg_t_{k}") for n, (k, (label, _, _)) in enumerate(SENSES.items())}
 else:
     target = GOALS[goal]
 
-pool = st.multiselect("Ingredients it may use", all_ids, key="sg_pool", format_func=lambda i: ING[i]["short"])
+# ---- Ingredients it may use, grouped by the job they do ----
+section_header("", "Ingredients it may use", "Pick the", "palette",
+               "Grouped by the main job each ingredient does. A second job is shown after the name. "
+               "Press an ingredient to allow it or leave it out.")
+
+
+def label(ing_id):
+    also = roles_of(ING[ing_id])[1:]
+    return ING[ing_id]["short"] + (f" (+ {', '.join(also).lower()})" if also else "")
+
+
+pool = []
+cols = st.columns(2, gap="large")
+for n, (role, ids) in enumerate(ROLE_GROUPS.items()):
+    key = pool_key(role)
+    if key in st.session_state:  # ingredients.csv may have changed since this was saved
+        st.session_state[key] = [i for i in st.session_state[key] if i in ids]
+    pool += cols[n % 2].pills(role, ids, selection_mode="multi", key=key, format_func=label) or []
+
 usable = eligible(pool, ptype)
 left_out = [ING[i]["short"] for i in pool if i not in usable]
 if left_out:
@@ -35,12 +52,13 @@ if left_out:
 
 def run(seed):
     with st.spinner("Searching…"):
-        st.session_state["sg_results"] = optimise(pool, ptype, ph, countries, target, seed=seed)
+        st.session_state["sg_results"] = optimise(pool, ptype, ph, countries, target, seed=seed, count=count)
     st.session_state["sg_seed"] = seed
     st.session_state["sg_used"] = (ptype, ph, countries, goal)
     st.session_state.pop("sg_loaded", None)
 
 
+st.write("")
 b1, b2, _ = st.columns([1, 1, 3])
 disabled = not has_core(usable)
 if disabled:
@@ -63,27 +81,28 @@ if not results:
     st.stop()
 
 used_ptype, used_ph, used_countries, used_goal = st.session_state["sg_used"]
-st.divider()
-st.subheader("Best three")
-st.caption(f"{used_goal} · {used_ptype.lower()} · pH {used_ph} · "
-           f"{', '.join(used_countries) if used_countries else 'no country rules applied'}")
+section_header("", "Results", "The best option" if len(results) == 1 else f"The best {len(results)}", "" if len(results) == 1 else "options",
+               f"{used_goal} · {used_ptype.lower()} · pH {ph_text(used_ph)} · "
+               f"{', '.join(used_countries) if used_countries else 'no country rules applied'}")
 
-for n, (res, col) in enumerate(zip(results, st.columns(len(results), gap="large")), start=1):
-    with col:
-        st.markdown(f"#### Option {n}")
-        match = max(0, 100 - 10 * res["dist"])
-        st.markdown(f'<p class="fx-note"><b>{product_form(res["sense"])}</b>'
-                    f'<small>Stability score {res["stability"]} · Goal match {match:.0f}%</small></p>', unsafe_allow_html=True)
-        if used_countries:
-            st.markdown(f'{pill("ok")} <span class="fx-muted">in {len(used_countries)} '
-                        f'{"country" if len(used_countries) == 1 else "countries"}</span>', unsafe_allow_html=True)
-        st.markdown(table_html(["", "%"], recipe_rows(res["items"])), unsafe_allow_html=True)
-        st.write("")
-        name = f"Suggested option {n}"
-        for slot, bc in zip(SLOTS, st.columns(2)):
-            bc.button(f"Load into {slot}", key=f"btn_sg_load_{n}_{slot}", on_click=load_suggestion,
-                      args=(res, slot, name), width="stretch")
+for start in range(0, len(results), 3):  # three options to a row
+    for n, (res, col) in enumerate(zip(results[start:start + 3], st.columns(3, gap="large")), start=start + 1):
+        with col:
+            st.markdown(f"#### Option {n}")
+            match = max(0, 100 - 10 * res["dist"])
+            st.markdown(f'<p class="fx-note"><b>{product_form(res["sense"])}</b>'
+                        f'<small>Stability score {res["stability"]} · Goal match {match:.0f}%</small></p>', unsafe_allow_html=True)
+            if used_countries:
+                st.markdown(f'{pill("ok")} <span class="fx-muted">in {len(used_countries)} '
+                            f'{"country" if len(used_countries) == 1 else "countries"}</span>', unsafe_allow_html=True)
+            st.markdown(table_html(["", "%"], recipe_rows(res["items"])), unsafe_allow_html=True)
+            st.write("")
+            name = f"Suggested option {n}"
+            for slot, bc in zip(SLOTS, st.columns(2)):
+                bc.button(f"Load into {slot}", key=f"btn_sg_load_{n}_{slot}", on_click=load_suggestion,
+                          args=(res, slot, name), width="stretch")
 
+st.write("")
 st.markdown("**How each option feels against your goal**")
 head = ["", "Goal", *[f"Option {n}" for n in range(1, len(results) + 1)]]
 rows = [[label, f"{target[k]:g}", *[("–" if r["sense"][k] is None else f"{r['sense'][k]:.1f}") for r in results]]
